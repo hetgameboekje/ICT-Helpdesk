@@ -34,6 +34,16 @@ if (!function_exists('statusLabel')) {
             'in_onderzoek' => 'In onderzoek',
             'bevestigd' => 'Bevestigd',
             'geaccepteerd' => 'Geaccepteerd risico',
+            // E-mailverwerking (MailMind) — imported_emails.status / kb_article_drafts.status.
+            'received' => 'Ontvangen',
+            'parsed' => 'Verwerkt',
+            'stored' => 'Opgeslagen',
+            'analyzed' => 'Geanalyseerd',
+            'draft_created' => 'Concept klaar',
+            'in_review' => 'In review',
+            'published' => 'Gepubliceerd',
+            'failed' => 'Mislukt',
+            'afgewezen' => 'Afgewezen',
         ];
         return $labels[$status] ?? ucfirst(str_replace('_', ' ', $status));
     }
@@ -56,6 +66,16 @@ if (!function_exists('truncateWoorden')) {
         }
 
         return implode(' ', array_slice($woorden, 0, $maxWoorden)) . '…';
+    }
+}
+
+if (!function_exists('behandelaarInitialen')) {
+    /** Initialen voor de avatar-cirkel in tabellen (bv. "Sanne de Vries" -> "SV"). */
+    function behandelaarInitialen(string $naam): string
+    {
+        $parts = preg_split('/\s+/', trim($naam));
+        $letters = array_map(fn($p) => strtoupper(substr($p, 0, 1)), array_slice($parts, 0, 2));
+        return implode('', $letters) ?: '?';
     }
 }
 
@@ -100,9 +120,11 @@ if (!function_exists('sortLink')) {
 }
 
 if (!function_exists('activeFilterChip')) {
-    function activeFilterChip(string $routeBase): string
+    /** @param array<int,string> $exclude Extra $_GET-sleutels die al elders zichtbaar zijn (bv. 'status'
+     *  als een module dat al als pil-tabs toont) en dus geen dubbele chip nodig hebben. */
+    function activeFilterChip(string $routeBase, array $exclude = []): string
     {
-        $filters = array_diff_key($_GET, ['sort' => null, 'dir' => null, 'q' => null, 'page' => null]);
+        $filters = array_diff_key($_GET, array_merge(['sort' => null, 'dir' => null, 'q' => null, 'page' => null], array_fill_keys($exclude, null)));
         $filters = array_filter($filters, fn ($v) => is_scalar($v) && $v !== '');
 
         if (empty($filters)) {

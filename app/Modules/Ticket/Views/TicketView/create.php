@@ -63,7 +63,7 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" type="submit">Ticket aanmaken</button>
+      <button class="btn btn-accent" type="submit">Ticket aanmaken</button>
       <a class="btn" href="/tickets">Annuleren</a>
     </div>
   </form>

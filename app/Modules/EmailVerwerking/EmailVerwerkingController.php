@@ -25,6 +25,19 @@ class EmailVerwerkingController extends Controller
         $draftTellingen = KbArticleDraftModel::telPerStatus();
         $config = require APP_ROOT . '/config/config.php';
 
+        // Pipeline-kolommen (zie Lovable mailmind.tsx): dezelfde 4 fases als het bestaande
+        // statusmodel al kent, alleen nu ook als losse item-lijsten i.p.v. alleen aantallen.
+        $ontvangen = array_merge(
+            ImportedEmailModel::metStatus('received'),
+            ImportedEmailModel::metStatus('parsed'),
+            ImportedEmailModel::metStatus('stored')
+        );
+        $conceptDrafts = array_merge(
+            KbArticleDraftModel::metStatus('draft_created'),
+            KbArticleDraftModel::metStatus('in_review')
+        );
+        $gepubliceerdDrafts = KbArticleDraftModel::metStatus('published');
+
         $this->render(self::VIEW_DIR . '/dashboard', [
             'activeModule' => self::MODULE,
             'pageTitle' => 'E-mail & kennisbank verwerking',
@@ -38,7 +51,28 @@ class EmailVerwerkingController extends Controller
             'confidenceDrempel' => $config['ai']['confidenceDrempel'],
             'recenteEmails' => array_slice(ImportedEmailModel::allWithRelations(), 0, 8),
             'recenteFouten' => ProcessingLogModel::recenteFouten(5),
+            'pipeline' => [
+                'ontvangen' => array_slice($ontvangen, -8),
+                'geanalyseerd' => array_slice(ImportedEmailModel::metStatus('analyzed'), -8),
+                'concept' => array_slice($conceptDrafts, -8),
+                'gepubliceerd' => array_slice($gepubliceerdDrafts, -8),
+            ],
+            'laatsteConcept' => $laatsteConcept = (end($conceptDrafts) ?: null),
+            'laatsteConceptBron' => $laatsteConcept
+                ? $this->eersteBronEmail((int) $laatsteConcept['id'])
+                : null,
         ]);
+    }
+
+    /** Eerste bron-e-mail van een concept, voor de "laatste conceptartikel"-preview op het dashboard. */
+    private function eersteBronEmail(int $draftId): ?array
+    {
+        $bronnen = KbArticleSourceModel::forDraft($draftId);
+        if (empty($bronnen)) {
+            return null;
+        }
+
+        return ImportedEmailModel::findWithRelations((int) $bronnen[0]['imported_email_id']);
     }
 
     public function inbox(): void

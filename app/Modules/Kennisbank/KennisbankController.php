@@ -4,6 +4,7 @@ namespace App\Modules\Kennisbank;
 
 use App\Core\CrudController;
 use App\Core\TableQuery;
+use App\Modules\EmailVerwerking\Models\KbArticleDraftModel;
 use App\Modules\Kennisbank\Models\KennisbankLogModel;
 use App\Modules\Kennisbank\Models\KennisbankModel;
 
@@ -117,11 +118,20 @@ class KennisbankController extends CrudController
 
     protected function extraViewData(array $allItems): array
     {
+        $categorieBoom = KennisbankModel::categorieBoom();
+        // "AI-concepten" (zie Lovable modules.kennisbank.tsx) leven bij ons niet tussen de gepubliceerde
+        // artikelen, maar in een eigen reviewwachtrij (App\Modules\EmailVerwerking) — vandaar de
+        // cross-module telling i.p.v. een concept-vlag op kennisbank_artikelen zelf.
+        $draftTellingen = KbArticleDraftModel::telPerStatus();
+
         return [
-            'categorieBoom' => KennisbankModel::categorieBoom(),
+            'categorieBoom' => $categorieBoom,
             'activeCategorie' => trim($_GET['categorie'] ?? ''),
             'activeSubcategorie' => trim($_GET['subcategorie'] ?? ''),
             'activeTags' => $this->activeTags(),
+            'kpiAantalArtikelen' => count($allItems),
+            'kpiAantalCategorieen' => count($categorieBoom),
+            'kpiConceptenInReview' => ($draftTellingen['draft_created'] ?? 0) + ($draftTellingen['in_review'] ?? 0),
         ];
     }
 

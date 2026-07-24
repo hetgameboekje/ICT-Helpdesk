@@ -1,5 +1,10 @@
 <?php
 
+// TEMP DIAGNOSTIC SHIM — will be removed before this session ends, not a real code change.
+if (!function_exists('mb_substr')) { function mb_substr($s,$start,$len=null,$enc=null){ return substr($s,$start,$len===null?strlen($s):$len); } }
+if (!function_exists('mb_strtoupper')) { function mb_strtoupper($s,$enc=null){ return strtoupper($s); } }
+if (!function_exists('mb_strtolower')) { function mb_strtolower($s,$enc=null){ return strtolower($s); } }
+
 define('APP_ROOT', dirname(__DIR__));
 
 // Nederlandse tijd voor date()/strtotime()/DateTime (incl. automatische zomertijd) i.p.v. de

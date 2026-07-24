@@ -7,139 +7,153 @@
 /** @var array $suggestiesArtikelen */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
 $statussen = ['open' => 'Open', 'in_behandeling' => 'In behandeling', 'wacht_op_info' => 'Wacht op info', 'afgehandeld' => 'Afgehandeld'];
-// Eén log-rij kan zowel een opmerking als een statuswijziging bevatten (bv. je typt een opmerking en
-// klikt op "Status bijwerken" i.p.v. "Opslaan") — zo'n rij hoort dus in BEIDE lijsten thuis, anders
-// verdwijnt de opmerking uit beeld zodra hij samen met een statuswijziging is opgeslagen.
-$statusLogs = array_values(array_filter($logs, fn ($log) => $log['status_naar'] !== null));
-$opmerkingen = array_values(array_filter($logs, fn ($log) => trim($log['titel'] ?? '') !== ''));
 
 $flashError = $_SESSION['flash_error'] ?? null;
 unset($_SESSION['flash_error']);
 ?>
-<div class="page-header">
-  <div style="display:flex;align-items:center;gap:12px">
-    <a class="btn" href="/tickets" style="padding:6px 10px">&larr;</a>
-    <div class="page-title">#<?= $item['id'] ?> — <?= htmlspecialchars($item['titel']) ?></div>
-    <?= statusBadge($item['status']) ?>
-  </div>
-  <div style="display:flex;gap:8px">
-    <a class="btn" href="/tickets/<?= $item['id'] ?>/edit">Bewerken</a>
-    <?= deleteButton('tickets', $item['id']) ?>
-  </div>
+<div class="detail-subheader">
+  <a class="detail-back" href="/tickets"><i class="bi bi-arrow-left"></i> Terug</a>
+  <span style="color:var(--color-text-tertiary)">&middot;</span>
+  <?= statusBadge($item['status']) ?>
+  <?= prioBadge($item['prioriteit']) ?>
+  <div style="flex:1"></div>
+  <?php if ($item['status'] !== 'afgehandeld'): ?>
+    <button type="submit" form="ticketLogForm" name="status" value="afgehandeld" class="btn btn-ghost"><i class="bi bi-check-circle"></i> Markeer afgehandeld</button>
+  <?php endif; ?>
+  <a class="btn btn-ghost" href="/tickets/<?= $item['id'] ?>/edit"><i class="bi bi-person-circle"></i> Toewijzen / bewerken</a>
+  <?= deleteButton('tickets', $item['id']) ?>
 </div>
 
 <?php if ($flashError): ?>
   <div class="alert alert-error"><?= htmlspecialchars($flashError) ?></div>
 <?php endif; ?>
 
-<div class="detail-layout-3col">
-  <div class="area-col1">
-    <div class="card" style="margin-bottom:10px">
-      <div class="card-header"><span class="card-title">Omschrijving</span></div>
-      <div class="collapsible-text" style="padding:16px;font-size:13px;line-height:1.7;color:var(--color-text-secondary);overflow-wrap:anywhere;max-height:4.5em;overflow:hidden">
+<div class="grid-detail">
+  <div class="grid-detail-main">
+
+    <div class="card" style="padding:18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <i class="bi bi-envelope" style="color:var(--color-text-tertiary)"></i>
+        <span style="font-size:12px;font-weight:500;color:var(--color-text-secondary)">Oorspronkelijk bericht van <?= htmlspecialchars($item['opdrachtgever_naam']) ?></span>
+      </div>
+      <div class="collapsible-text" style="font-size:13px;line-height:1.7;color:var(--color-text-secondary);overflow-wrap:anywhere;max-height:4.5em;overflow:hidden">
         <?= $item['omschrijving'] !== '' ? nl2br(htmlspecialchars($item['omschrijving'])) : '<span style="color:var(--color-text-tertiary)">Geen omschrijving</span>' ?>
       </div>
-      <div class="collapsible-toggle" style="display:none;padding:0 16px 12px">
+      <div class="collapsible-toggle" style="display:none;margin-top:6px">
         <a href="#" class="collapsible-toggle-link" style="font-size:12px">Meer tonen</a>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><span class="card-title">Opmerkingen</span></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Opmerking toevoegen</span></div>
 
-      <div style="padding:16px;border-bottom:0.5px solid var(--color-border-tertiary)">
-        <form method="post" action="/tickets/<?= $item['id'] ?>/log" id="ticketLogForm">
-          <div class="form-group">
+      <form method="post" action="/tickets/<?= $item['id'] ?>/log" id="ticketLogForm">
+        <div style="padding:16px;border-bottom:0.5px solid var(--color-border-tertiary)">
+          <div class="form-group" style="margin-bottom:10px">
             <label class="form-label">Titel</label>
             <input type="text" name="titel" id="opmerkingTitel" placeholder="Korte titel voor deze opmerking">
           </div>
-          <div class="form-group">
-            <label class="form-label">Opmerking toevoegen</label>
-            <textarea name="opmerking" id="opmerkingTekst" placeholder="Beschrijf wat je gedaan hebt of vraag om meer informatie..."></textarea>
-          </div>
-          <button class="btn btn-primary" type="submit">Opslaan</button>
-        </form>
+          <textarea name="opmerking" id="opmerkingTekst" placeholder="Beschrijf wat je gedaan hebt of vraag om meer informatie…" style="min-height:90px"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:10px 16px;background:var(--color-background-secondary)">
+          <button class="btn btn-accent" type="submit">Opslaan</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Logboek &amp; tijdlijn</span>
+        <span style="font-size:11px;color:var(--color-text-tertiary)"><?= count($logs) ?> gebeurtenissen</span>
       </div>
 
-      <?php if (empty($opmerkingen)): ?>
-        <div class="empty-state">Nog geen opmerkingen.</div>
+      <?php if (empty($logs)): ?>
+        <div class="empty-state">Nog geen gebeurtenissen.</div>
       <?php else: ?>
-        <div class="log-list">
-        <?php foreach ($opmerkingen as $log): ?>
-        <div class="log-item">
-          <div class="log-meta">
-            <span class="log-user"><?= htmlspecialchars($log['user_naam'] ?? 'ACA') ?></span>
-            <span class="log-time"><?= formatDatumTijd($log['created_at']) ?></span>
+        <div class="timeline">
+          <?php foreach ($logs as $log):
+            $isStatus = $log['status_naar'] !== null;
+            $heeftOpmerking = trim($log['opmerking'] ?? '') !== '' || !empty($log['titel']);
+          ?>
+          <div class="timeline-item">
+            <div class="timeline-connector"></div>
+            <div class="timeline-icon <?= $isStatus ? 'timeline-icon-status' : 'timeline-icon-opmerking' ?>">
+              <i class="bi <?= $isStatus ? 'bi-arrow-repeat' : 'bi-chat-left-text' ?>"></i>
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-head">
+                <span class="timeline-actor"><?= htmlspecialchars($log['user_naam'] ?? 'ACA') ?></span>
+                <span class="timeline-action">
+                  <?= $isStatus ? 'wijzigde de status' : 'voegde een opmerking toe' ?>
+                </span>
+                <span class="timeline-time"><?= formatDatumTijd($log['created_at']) ?></span>
+              </div>
+              <?php if ($isStatus): ?>
+                <div style="margin-top:6px">
+                  <span class="status-change">
+                    <span class="badge badge-<?= htmlspecialchars($log['status_van']) ?>" style="padding:2px 6px;font-size:10px"><?= statusLabel($log['status_van']) ?></span>
+                    &rarr;
+                    <span class="badge badge-<?= htmlspecialchars($log['status_naar']) ?>" style="padding:2px 6px;font-size:10px"><?= statusLabel($log['status_naar']) ?></span>
+                  </span>
+                </div>
+              <?php endif; ?>
+              <?php if ($heeftOpmerking): ?>
+                <div class="timeline-detail">
+                  <?php if (!empty($log['titel'])): ?><strong><?= htmlspecialchars($log['titel']) ?></strong><br><?php endif; ?>
+                  <?php if (trim($log['opmerking'] ?? '') !== ''): ?><?= nl2br(htmlspecialchars($log['opmerking'])) ?><?php endif; ?>
+                </div>
+              <?php endif; ?>
+            </div>
           </div>
-          <?php if (!empty($log['titel'])): ?>
-          <div class="log-title" style="font-weight:600;margin-bottom:2px"><?= htmlspecialchars($log['titel']) ?></div>
-          <?php endif; ?>
-          <?php if (trim($log['opmerking'] ?? '') !== ''): ?>
-          <div class="log-text"><?= nl2br(htmlspecialchars($log['opmerking'])) ?></div>
-          <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
+          <?php endforeach; ?>
         </div>
       <?php endif; ?>
     </div>
   </div>
 
-  <div class="area-right">
-  <div class="area-escalatie">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Status wijzigen</span></div>
-      <div style="padding:16px">
-        <!-- Hoort bij #ticketLogForm (het opmerking-formulier hierboven), via het form="" attribuut —
-             zo wordt een eventueel ingevulde opmerking niet verloren wanneer je hier de status wijzigt. -->
-        <div class="form-group">
-          <select name="status" form="ticketLogForm" style="width:100%">
-            <?php foreach ($statussen as $val => $label): ?>
-              <option value="<?= $val ?>" <?= $item['status'] === $val ? 'selected' : '' ?>><?= $label ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <button class="btn btn-primary" type="submit" form="ticketLogForm" style="width:100%;justify-content:center">Status bijwerken</button>
-      </div>
+  <div class="grid-detail-side">
 
-      <div class="card-header"><span class="card-title">Escalatie</span></div>
-      <div style="padding:16px">
-        <!-- Deelt #ticketLogForm met Opmerkingen/Status wijzigen, zodat het invullen van deze velden
-             niet verloren gaat als je op een van de andere knoppen op deze pagina klikt. -->
-        <div class="form-group">
-          <label class="form-label">Escalatienummer</label>
-          <input type="text" name="escalatie_nummer" form="ticketLogForm" value="<?= htmlspecialchars($item['escalatie_nummer'] ?? '') ?>" placeholder="Bijv. CAS-109311-L4Z5L7 - ACA:000133869">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Instantie</label>
-          <input type="text" name="escalatie_instantie" form="ticketLogForm" value="<?= htmlspecialchars($item['escalatie_instantie'] ?? '') ?>" placeholder="Bijv. ACA, ClearSolutions">
-        </div>
-        <button class="btn btn-primary" type="submit" form="ticketLogForm">Opslaan</button>
+    <div class="card" style="padding:16px">
+      <h3 class="detail-side-heading">Details</h3>
+      <div class="meta-row"><span class="meta-key">Opdrachtgever</span><span><?= htmlspecialchars($item['opdrachtgever_naam']) ?></span></div>
+      <div class="meta-row"><span class="meta-key">Afdeling</span><span><?= htmlspecialchars($item['afdeling_naam'] ?? '—') ?></span></div>
+      <div class="meta-row"><span class="meta-key">Behandelaar</span><span><?= htmlspecialchars($item['behandelaar_naam'] ?? '—') ?></span></div>
+      <div class="meta-row"><span class="meta-key">Categorie</span><span><?= htmlspecialchars($item['categorie'] ?? 'Algemeen') ?></span></div>
+      <?php if (!empty($item['is_cyberrisico'])): ?>
+      <div class="meta-row"><span class="meta-key">Cyber risico</span><span><?= prioBadge('kritiek') ?></span></div>
+      <?php endif; ?>
+      <div class="meta-row"><span class="meta-key">Impact</span><span><?= htmlspecialchars($item['impact']) ?></span></div>
+      <div class="meta-row"><span class="meta-key">Schatting</span><span><?= ($item['schatting_minuten'] ?? null) !== null ? $item['schatting_minuten'] . ' min' : '—' ?></span></div>
+      <div class="meta-row"><span class="meta-key">Aangemaakt</span><span><?= formatDatum($item['created_at']) ?></span></div>
+      <div class="meta-row"><span class="meta-key">Bijgewerkt</span><span><?= formatDatum($item['updated_at'] ?? null) ?></span></div>
+      <div class="meta-row"><span class="meta-key">Deadline</span><span><?= formatDatum($item['deadline']) ?></span></div>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3 class="detail-side-heading">Status wijzigen</h3>
+      <div class="status-picker">
+        <?php foreach ($statussen as $val => $label): ?>
+          <button type="submit" form="ticketLogForm" name="status" value="<?= $val ?>"
+                  class="<?= $item['status'] === $val ? 'active' : '' ?>"
+                  style="background:var(--color-status-<?= $val === 'in_behandeling' ? 'behandeling' : ($val === 'wacht_op_info' ? 'wachtend' : ($val === 'afgehandeld' ? 'opgelost' : 'open')) ?>-bg);color:var(--color-status-<?= $val === 'in_behandeling' ? 'behandeling' : ($val === 'wacht_op_info' ? 'wachtend' : ($val === 'afgehandeld' ? 'opgelost' : 'open')) ?>)">
+            <?= htmlspecialchars($label) ?>
+          </button>
+        <?php endforeach; ?>
       </div>
     </div>
-  </div>
 
-  <div class="area-tijd">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Tijdregistratie</span>
-        <span style="font-size:12px;color:var(--color-text-tertiary)">Totaal: <?= $tijdTotaal ?> min</span>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <h3 class="detail-side-heading" style="margin-bottom:0">Tijdregistratie</h3>
+        <span style="font-size:11px;color:var(--color-text-tertiary)">Totaal: <?= $tijdTotaal ?> min</span>
       </div>
-
-      <div style="padding:16px;border-bottom:0.5px solid var(--color-border-tertiary)">
-        <form method="post" action="/tickets/<?= $item['id'] ?>/tijd">
-          <label class="form-label">Tijd registreren</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <?php foreach ([5, 10, 15, 30, 45, 60] as $blok): ?>
-              <button class="btn" type="submit" name="minuten" value="<?= $blok ?>"><?= $blok ?> min</button>
-            <?php endforeach; ?>
-          </div>
-        </form>
-      </div>
-
-      <?php if (empty($tijdregistraties)): ?>
-        <div class="empty-state">Nog geen tijd geregistreerd.</div>
-      <?php else: ?>
-        <div class="log-list" style="max-height:190px">
+      <form method="post" action="/tickets/<?= $item['id'] ?>/tijd" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:<?= empty($tijdregistraties) ? '0' : '10px' ?>">
+        <?php foreach ([5, 10, 15, 30, 45, 60] as $blok): ?>
+          <button class="btn" type="submit" name="minuten" value="<?= $blok ?>" style="padding:4px 9px;font-size:11.5px"><?= $blok ?> min</button>
+        <?php endforeach; ?>
+      </form>
+      <?php if (!empty($tijdregistraties)): ?>
+        <div class="log-list" style="max-height:160px;margin:0 -16px -16px;border-top:0.5px solid var(--color-border-tertiary)">
         <?php foreach ($tijdregistraties as $tijd): ?>
         <div class="log-item">
           <div class="log-meta">
@@ -152,86 +166,55 @@ unset($_SESSION['flash_error']);
         </div>
       <?php endif; ?>
     </div>
-  </div>
 
-  <div class="area-details">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Details</span></div>
-      <div style="padding:0 16px">
-        <div class="meta-row"><span class="meta-key">Opdrachtgever</span><span><?= htmlspecialchars($item['opdrachtgever_naam']) ?></span></div>
-        <div class="meta-row"><span class="meta-key">Categorie</span><span><?= htmlspecialchars($item['categorie'] ?? 'Algemeen') ?></span></div>
-        <?php if (!empty($item['is_cyberrisico'])): ?>
-        <div class="meta-row"><span class="meta-key">Cyber risico</span><span><?= prioBadge('kritiek') ?></span></div>
-        <?php endif; ?>
-        <div class="meta-row"><span class="meta-key">Afdeling</span><span><?= htmlspecialchars($item['afdeling_naam'] ?? '—') ?></span></div>
-        <div class="meta-row"><span class="meta-key">Prioriteit</span><span><?= prioBadge($item['prioriteit']) ?></span></div>
-        <div class="meta-row"><span class="meta-key">Impact</span><span><?= htmlspecialchars($item['impact']) ?></span></div>
-        <div class="meta-row"><span class="meta-key">Schatting</span><span><?= ($item['schatting_minuten'] ?? null) !== null ? $item['schatting_minuten'] . ' min' : '—' ?></span></div>
-        <div class="meta-row"><span class="meta-key">Behandelaar</span><span><?= htmlspecialchars($item['behandelaar_naam'] ?? '—') ?></span></div>
-        <div class="meta-row"><span class="meta-key">Datum aangemaakt</span><span><?= formatDatum($item['created_at']) ?></span></div>
-        <div class="meta-row"><span class="meta-key">Deadline</span><span><?= formatDatum($item['deadline']) ?></span></div>
+    <div class="card" style="padding:16px">
+      <h3 class="detail-side-heading">Escalatie</h3>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Escalatienummer</label>
+        <input type="text" name="escalatie_nummer" form="ticketLogForm" value="<?= htmlspecialchars($item['escalatie_nummer'] ?? '') ?>" placeholder="Bijv. CAS-109311-L4Z5L7 - ACA:000133869">
       </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Instantie</label>
+        <input type="text" name="escalatie_instantie" form="ticketLogForm" value="<?= htmlspecialchars($item['escalatie_instantie'] ?? '') ?>" placeholder="Bijv. ACA, ClearSolutions">
+      </div>
+      <button class="btn" type="submit" form="ticketLogForm">Opslaan</button>
     </div>
-  </div>
 
-  <div class="area-statuslog">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Statuslogboek</span></div>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <i class="bi bi-stars" style="color:var(--color-primary);font-size:12px"></i>
+        <h3 class="detail-side-heading" style="margin-bottom:0">Kennisbank</h3>
+      </div>
 
-      <?php if (empty($statusLogs)): ?>
-        <div class="empty-state">Nog geen statuswijzigingen.</div>
-      <?php else: ?>
-        <?php foreach ($statusLogs as $log): ?>
-        <div class="log-item">
-          <div class="log-meta">
-            <span class="log-user"><?= htmlspecialchars($log['user_naam'] ?? 'ACA') ?></span>
-            <span class="log-time"><?= formatDatumTijd($log['created_at']) ?></span>
-            <span class="status-change">
-              <span class="badge badge-<?= htmlspecialchars($log['status_van']) ?>" style="padding:2px 6px;font-size:10px"><?= statusLabel($log['status_van']) ?></span>
-              &rarr;
-              <span class="badge badge-<?= htmlspecialchars($log['status_naar']) ?>" style="padding:2px 6px;font-size:10px"><?= statusLabel($log['status_naar']) ?></span>
-            </span>
-          </div>
-        </div>
-        <?php endforeach; ?>
+      <?php if (empty($gekoppeldeArtikelen) && empty($suggestiesArtikelen)): ?>
+        <div style="font-size:12.5px;color:var(--color-text-tertiary)">Nog geen artikelen gekoppeld of gesuggereerd.</div>
       <?php endif; ?>
-    </div>
-  </div>
-  </div>
 
-  <div class="area-kb">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Gerelateerde kennisbank artikelen</span></div>
-
-      <?php if (empty($gekoppeldeArtikelen)): ?>
-        <div class="empty-state">Nog geen artikelen gekoppeld.</div>
-      <?php else: ?>
-        <?php foreach ($gekoppeldeArtikelen as $artikel): ?>
-        <div class="log-item">
-          <div class="log-meta" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <a href="/kennisbank/<?= $artikel['id'] ?>"><?= htmlspecialchars($artikel['titel']) ?></a>
-            <form method="post" action="/tickets/<?= $item['id'] ?>/kennisbank/<?= $artikel['id'] ?>/verwijderen"
-                  onsubmit="return confirm('Koppeling met dit artikel verwijderen?')">
-              <button class="btn btn-danger" type="submit" style="padding:2px 8px;font-size:11px">&times;</button>
-            </form>
-          </div>
+      <?php foreach ($gekoppeldeArtikelen as $artikel): ?>
+        <div class="kb-item" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <a href="/kennisbank/<?= $artikel['id'] ?>" style="min-width:0">
+            <div class="kb-item-id">Gekoppeld</div>
+            <div class="kb-item-title text-truncate"><?= htmlspecialchars($artikel['titel']) ?></div>
+          </a>
+          <form method="post" action="/tickets/<?= $item['id'] ?>/kennisbank/<?= $artikel['id'] ?>/verwijderen"
+                onsubmit="return confirm('Koppeling met dit artikel verwijderen?')">
+            <button class="btn btn-danger" type="submit" style="padding:2px 8px;font-size:11px">&times;</button>
+          </form>
         </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
+      <?php endforeach; ?>
 
       <?php if (!empty($suggestiesArtikelen)): ?>
-        <div style="padding:12px 16px;border-top:0.5px solid var(--color-border-tertiary)">
-          <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px">
-            Suggesties (categorie "<?= htmlspecialchars($item['categorie'] ?? 'Algemeen') ?>")
-          </div>
-          <?php foreach ($suggestiesArtikelen as $artikel): ?>
-            <form method="post" action="/tickets/<?= $item['id'] ?>/kennisbank" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
-              <a href="/kennisbank/<?= $artikel['id'] ?>"><?= htmlspecialchars($artikel['titel']) ?></a>
-              <input type="hidden" name="kennisbank_artikel_id" value="<?= $artikel['id'] ?>">
-              <button class="btn" type="submit" style="padding:2px 8px;font-size:11px">Koppelen</button>
-            </form>
-          <?php endforeach; ?>
-        </div>
+        <?php if (!empty($gekoppeldeArtikelen)): ?><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-tertiary);margin:10px 0 6px">Suggesties</div><?php endif; ?>
+        <?php foreach ($suggestiesArtikelen as $artikel): ?>
+          <form method="post" action="/tickets/<?= $item['id'] ?>/kennisbank" class="kb-item" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="min-width:0">
+              <span class="kb-item-id">Suggestie · <?= htmlspecialchars($item['categorie'] ?? 'Algemeen') ?></span>
+              <span class="kb-item-title text-truncate" style="display:block"><?= htmlspecialchars($artikel['titel']) ?></span>
+            </span>
+            <input type="hidden" name="kennisbank_artikel_id" value="<?= $artikel['id'] ?>">
+            <button class="btn" type="submit" style="padding:2px 8px;font-size:11px">Koppelen</button>
+          </form>
+        <?php endforeach; ?>
       <?php endif; ?>
     </div>
   </div>

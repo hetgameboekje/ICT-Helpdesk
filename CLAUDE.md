@@ -111,6 +111,49 @@ after each step (`php -S localhost:8000 -t public public/router.php`, check both
 `data-bs-theme="light"` and `"dark"`) before moving to the next one — there's no automated test
 suite to catch a visual regression.
 
+**Uitvoeringsregel:** elk scherm wordt 1-op-1 uit het Lovable-project nagebouwd (layout, toolbar,
+interactiepatronen — niet alleen kleuren/tokens hergebruiken van bestaande PHP-views). Waar een
+Lovable-scherm iets toont dat geen echte backend heeft (in de mockup zelf, of in onze database), wordt
+dat element weggelaten of vereenvoudigd tot wat wél echt werkt — nooit nagemaakt met verzonnen data of
+een knop die niets doet. Elke keer dat dit gebeurt, komt er een regel bij in de lijst hieronder.
+
+### Nog te herdesignen/uit te werken met Lovable
+Plekken waar het PHP-scherm bewust afwijkt van de Lovable-mockup (`https://lovable.dev/projects/4675b36f-276e-4fc5-9606-d83a98f9d801`)
+omdat de mockup iets toont zonder (volledige) echte functionaliteit erachter. Gebruik dit als startpunt
+voor een vervolgprompt in Lovable om de UX daadwerkelijk uit te werken, waarna de PHP-kant het opnieuw
+1-op-1 kan overnemen.
+
+- **Topbar — globale zoekbalk (⌘K)**: staat overal zichtbaar (`app/Views/layouts/app.php`) maar is
+  puur decoratief (disabled input) — geen backend-zoekindex over tickets/medewerkers/KB-artikelen.
+  Ook in de Lovable-mockup zelf niet functioneel (ongecontroleerde input zonder resultaten).
+- **Ticket-detail — bijlagen**: Lovable toont een paperclip-icoon met voorbeeldbestand
+  (`screenshot-fout.png · 214 KB`) bij het oorspronkelijke bericht. Er is geen bijlage-kolom/-opslag
+  in het datamodel (`tickets`-tabel) — weggelaten in `app/Modules/Ticket/Views/TicketView/show.php`.
+- **Ticket-detail — "Antwoorden" / "@Vermelding"**: de opmerking-composer in Lovable heeft drie tabs
+  (Antwoorden naar melder per e-mail, Interne notitie, Vermelding); alleen "Interne notitie" bestaat
+  echt (het bestaande opmerkingen-logboek). Rechtstreeks een e-mail terugsturen naar de melder of
+  iemand @vermelden bestaat niet — de composer toont daarom alleen de werkende opmerking-flow.
+  ⛅ Hangt samen met de MailMind-pipeline (`app/Modules/EmailVerwerking`) — mogelijk een logische plek
+  om dit later aan te haken in plaats van los te bouwen.
+- **Ticket-detail — "Gerelateerd"-paneel**: Lovable toont een kaart met verzonnen gekoppelde tickets/
+  verbeterpunten. Geen backend voor willekeurige cross-links tussen items — paneel is weggelaten i.p.v.
+  nagemaakt met voorbeelddata.
+- **Ticket-detail — "Kanaal"**: Details-kaart in Lovable toont hoe het ticket is binnengekomen
+  (e-mail/telefoon/etc.); geen kolom hiervoor in `tickets` — weggelaten.
+- **Ticket-detail — directe "Toewijzen"-actie**: Lovable suggereert instant behandelaar-toewijzing
+  vanaf de detailpagina; bij ons kan behandelaar alleen via de volledige bewerk-pagina gewijzigd
+  worden (`/tickets/{id}/edit`) — de knop linkt daarom door i.p.v. een quick-assign te faken.
+- **Kennisbank — "Views deze week" / "Verouderd (>6 mnd)"-KPI's**: Lovable's KPI-rij toont paginaweergaven
+  en een "verouderd"-badge per artikel. Er is geen view-telling en geen laatst-bijgewerkt-drempel in het
+  datamodel (`kennisbank_artikelen`) — deze twee KPI's zijn vervangen door "Categorieën" en "AI-concepten
+  in review" (echte, beschikbare tellingen; die laatste linkt door naar de reviewwachtrij in
+  `app/Modules/EmailVerwerking`).
+- **Kennisbank — inline voorbeeldpaneel**: Lovable's lijst-view opent een artikel direct in een
+  voorbeeldpaneel naast de lijst (split-view, geen page-load). Onze lijst linkt nog door naar een aparte
+  detailpagina (`app/Modules/Kennisbank/Views/KennisbankView/show.php`) — geen backend-wijziging nodig
+  om dit alsnog te bouwen, maar bewust niet meegenomen in deze fase (grotere JS/UX-wijziging dan een
+  visuele restyle).
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

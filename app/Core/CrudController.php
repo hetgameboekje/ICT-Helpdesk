@@ -10,6 +10,8 @@ abstract class CrudController extends Controller
     protected string $activeModule;
     protected string $pageTitle;
     protected ?string $searchColumn = 'titel';
+    /** Topbar-breadcrumb (bv. ['Support']) — zie app/Views/layouts/app.php. Leeg = geen breadcrumb-regel. */
+    protected array $breadcrumbs = [];
 
     /**
      * Rij-niveau toegangscontrole bovenop requirePermission() — bv. afdeling/eigenaarschap.
@@ -41,6 +43,7 @@ abstract class CrudController extends Controller
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,
+            'breadcrumbs' => $this->breadcrumbs,
             'sort' => $_GET['sort'] ?? null,
             'dir' => ($_GET['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc',
         ], $this->extraViewData($allItems)));
@@ -69,6 +72,7 @@ abstract class CrudController extends Controller
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,
+            'breadcrumbs' => $this->breadcrumbs,
         ]));
     }
 
@@ -100,6 +104,7 @@ abstract class CrudController extends Controller
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,
+            'breadcrumbs' => $this->breadcrumbs,
         ]));
     }
 
@@ -123,6 +128,7 @@ abstract class CrudController extends Controller
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,
+            'breadcrumbs' => $this->breadcrumbs,
         ]));
     }
 

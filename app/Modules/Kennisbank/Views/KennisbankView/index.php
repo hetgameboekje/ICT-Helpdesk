@@ -8,6 +8,9 @@
 /** @var string $activeCategorie */
 /** @var string $activeSubcategorie */
 /** @var array $activeTags */
+/** @var int $kpiAantalArtikelen */
+/** @var int $kpiAantalCategorieen */
+/** @var int $kpiConceptenInReview */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
 
 $flashSuccess = $_SESSION['flash_success'] ?? null;
@@ -27,7 +30,7 @@ function kbCategorieUrl(string $categorie, string $subcategorie = ''): string
 ?>
 <div class="page-header">
   <div class="page-title">Kennisbank</div>
-  <a class="btn btn-primary" href="/kennisbank/create">+ Nieuw artikel</a>
+  <a class="btn btn-accent" href="/kennisbank/create">+ Nieuw artikel</a>
 </div>
 
 <?php if ($flashSuccess): ?>
@@ -37,11 +40,35 @@ function kbCategorieUrl(string $categorie, string $subcategorie = ''): string
   <div class="alert alert-error"><?= htmlspecialchars($flashError) ?></div>
 <?php endif; ?>
 
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card-head">
+      <span class="kpi-label">Artikelen</span>
+      <span class="kpi-icon kpi-icon-opgelost"><i class="bi bi-journal-bookmark"></i></span>
+    </div>
+    <div class="kpi-value"><?= (int) $kpiAantalArtikelen ?></div>
+  </div>
+  <a class="kpi-card" href="/email-verwerking/review">
+    <div class="kpi-card-head">
+      <span class="kpi-label">AI-concepten in review</span>
+      <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-stars"></i></span>
+    </div>
+    <div class="kpi-value"><?= (int) $kpiConceptenInReview ?></div>
+  </a>
+  <div class="kpi-card">
+    <div class="kpi-card-head">
+      <span class="kpi-label">Categorieën</span>
+      <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-folder2"></i></span>
+    </div>
+    <div class="kpi-value"><?= (int) $kpiAantalCategorieen ?></div>
+  </div>
+</div>
+
 <form method="get" action="/kennisbank" class="filters" style="margin-bottom:14px">
   <?php if ($activeCategorie !== ''): ?><input type="hidden" name="categorie" value="<?= htmlspecialchars($activeCategorie) ?>"><?php endif; ?>
   <?php if ($activeSubcategorie !== ''): ?><input type="hidden" name="subcategorie" value="<?= htmlspecialchars($activeSubcategorie) ?>"><?php endif; ?>
   <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Zoeken op titel...">
-  <button class="btn btn-primary" type="submit">Zoeken</button>
+  <button class="btn" type="submit">Zoeken</button>
 
   <div class="kb-tag-filter" id="kb-tag-filter">
     <button type="button" class="btn" id="kb-tag-filter-btn">Tags<span id="kb-tag-filter-count"></span></button>
@@ -58,7 +85,7 @@ function kbCategorieUrl(string $categorie, string $subcategorie = ''): string
   </div>
 </form>
 
-<?= activeFilterChip('kennisbank') ?>
+<?= activeFilterChip('kennisbank', ['categorie', 'subcategorie']) ?>
 
 <div class="detail-layout" style="grid-template-columns:260px 1fr">
   <div class="card kb-nav-card">

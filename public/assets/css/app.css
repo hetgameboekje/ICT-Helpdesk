@@ -207,11 +207,25 @@ a{color:inherit;text-decoration:none}
 .sidebar-online-dot{width:7px;height:7px;border-radius:50%;background:var(--color-primary);flex-shrink:0}
 .sidebar-backdrop{display:none}
 
-.topbar{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
 .topbar-menu-btn{border:none;background:none;font-size:20px;color:var(--color-text-secondary);cursor:pointer;padding:2px 4px}
-.topbar-title{font-family:var(--font-display);font-size:15px;font-weight:600}
+.topbar-titles{flex:1;min-width:0}
+.topbar-breadcrumb{font-size:11px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.02em}
+.topbar-title{font-family:var(--font-display);font-size:15px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-search{position:relative;align-items:center;width:340px;max-width:100%}
+.topbar-search i{position:absolute;left:11px;font-size:13px;color:var(--color-text-tertiary)}
+.topbar-search input{width:100%;padding:7px 44px 7px 32px;font-size:13px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border:1px solid transparent;color:var(--color-text-primary)}
+.topbar-search input::placeholder{color:var(--color-text-tertiary)}
+.topbar-search kbd{position:absolute;right:8px;font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:1px 5px}
 
-.main{padding:24px 20px;max-width:1100px;margin:0 auto}
+@media (max-width:576px){.topbar-search{display:none !important}}
+
+/* width:100% is nodig naast max-width/margin:auto: .main is een flex-item in .app-content
+   (flex-direction:column, zie sidebar/topbar-layout). Auto-marges op een flex-item overschrijven
+   anders de standaard stretch-uitlijning, waardoor .main krimpt naar zijn content-breedte i.p.v.
+   altijd tot 1100px te vullen — zichtbaar als een sterk springende/smalle pagina zodra de content
+   smaller is dan 1100px (bv. een lege tabel na filteren). */
+.main{width:100%;padding:24px 20px;max-width:1100px;margin:0 auto;box-sizing:border-box}
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
 .page-title{font-size:17px;font-weight:600;letter-spacing:-.01em}
 
@@ -241,9 +255,14 @@ a.stat:hover{background:var(--color-background-secondary)}
 .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 .table-wrap{overflow-x:auto}
+/* table-layout:fixed is bewust gehouden (niet auto): bij auto bepaalt de browser kolombreedte op
+   basis van de ongebroken inhoud, dus één titel zonder spaties (of een lang woord) kan de hele
+   tabel — en daarmee de pagina — breder maken dan het scherm. Fixed houdt elke kolom voorspelbaar
+   op zijn ingestelde breedte; content die niet past, knipt af via .text-truncate (titel) of krijgt
+   gewoon een ruimere kolom (badges/namen hieronder breed genoeg gemaakt om niet af te knippen). */
 table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:560px}
-.col-1{width:70px}
-.col-2{width:130px}
+.col-1{width:90px}
+.col-2{width:150px}
 .col-3{width:170px}
 th{font-size:11px;font-weight:600;color:var(--color-text-secondary);padding:0;text-align:left;border-bottom:0.5px solid var(--color-border-tertiary);text-transform:uppercase;letter-spacing:.03em}
 th a.th-sort{display:flex;align-items:center;gap:4px;padding:8px 14px;color:inherit}
@@ -258,6 +277,67 @@ tbody tr:hover td{background:var(--color-background-secondary);cursor:pointer}
 
 .filter-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:20px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info)}
 
+/* Lijst-toolbar (zoek + secundaire acties) — zie Lovable tickets.index.tsx. */
+.list-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.search-input{position:relative;flex:1;min-width:200px}
+.search-input i{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12.5px;color:var(--color-text-tertiary)}
+.search-input input{width:100%;padding:7px 10px 7px 32px;font-size:13px}
+.btn-ghost{background:none;border-color:transparent}
+.btn-ghost:hover{background:var(--color-background-secondary)}
+
+/* Statusfilter als pil-tabs met aantallen i.p.v. dropdown — zie Lovable tickets.index.tsx. */
+.status-tabs{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px}
+.status-tab{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:var(--border-radius-md);
+  font-size:12px;font-weight:500;white-space:nowrap;color:var(--color-text-secondary);border:none;background:none;cursor:pointer;
+}
+.status-tab:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.status-tab.active{background:var(--color-text-primary);color:var(--color-background-primary)}
+.status-tab-count{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:4px;background:var(--color-background-secondary)}
+.status-tab.active .status-tab-count{background:rgba(128,128,128,.35);color:inherit}
+
+/* Uitklap-paneel voor secundaire filters (achter de "Filters"-knop). */
+.filters-panel{display:none;padding:14px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary)}
+.filters-panel.open{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.avatar-xs{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:9px;font-weight:600;flex-shrink:0}
+
+.list-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:0.5px solid var(--color-border-tertiary);font-size:12px;color:var(--color-text-secondary)}
+
+/* Detail-subheader (terug-link + statusbadges + acties) — zie Lovable tickets.$id.tsx. */
+.detail-subheader{display:flex;align-items:center;gap:10px;padding-bottom:14px;margin-bottom:14px;border-bottom:0.5px solid var(--color-border-tertiary);flex-wrap:wrap}
+.detail-back{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--color-text-secondary)}
+.detail-back:hover{color:var(--color-text-primary)}
+
+/* Unified logboek/tijdlijn met verbindingslijn — zie Lovable tickets.$id.tsx. */
+.timeline{padding:16px}
+.timeline-item{display:flex;gap:11px;position:relative;padding-bottom:18px}
+.timeline-item:last-child{padding-bottom:0}
+.timeline-connector{position:absolute;left:12.5px;top:28px;bottom:-18px;width:1px;background:var(--color-border-tertiary)}
+.timeline-item:last-child .timeline-connector{display:none}
+.timeline-icon{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;flex-shrink:0;font-size:11px;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.timeline-icon-status{background:var(--color-status-behandeling-bg);color:var(--color-status-behandeling)}
+.timeline-icon-opmerking{background:var(--color-status-open-bg);color:var(--color-status-open)}
+.timeline-body{flex:1;min-width:0;padding-top:2px}
+.timeline-head{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.timeline-actor{font-size:13px;font-weight:500}
+.timeline-action{font-size:13px;color:var(--color-text-secondary)}
+.timeline-time{font-size:11px;color:var(--color-text-tertiary);margin-left:auto}
+.timeline-detail{margin-top:6px;font-size:13px;line-height:1.5;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;color:var(--color-text-secondary);overflow-wrap:anywhere}
+
+/* Statuswijzigen als kleurgevulde knoppengrid i.p.v. dropdown — zie Lovable tickets.$id.tsx. */
+.status-picker{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.status-picker button{padding:7px 10px;border-radius:var(--border-radius-md);font-size:12px;font-weight:500;text-align:left;border:none;cursor:pointer;font-family:inherit;opacity:.7;transition:opacity .12s ease}
+.status-picker button:hover{opacity:1}
+.status-picker button.active{opacity:1;box-shadow:inset 0 0 0 2px currentColor}
+
+/* Kennisbank-suggestiekaartjes — zie Lovable tickets.$id.tsx. */
+.kb-item{display:block;padding:9px 11px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:6px;text-decoration:none;color:inherit;transition:border-color .12s ease,background-color .12s ease}
+.kb-item:last-child{margin-bottom:0}
+.kb-item:hover{border-color:var(--color-primary);background:var(--color-background-secondary)}
+.kb-item-id{font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary)}
+.kb-item-title{font-size:13px;font-weight:500;margin-top:2px;line-height:1.35}
+
 .filters select{width:auto;max-width:170px;padding:6px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:12.5px;font-family:var(--font-sans)}
 .filters input[type=text]{width:180px;max-width:180px;padding:6px 8px;font-size:12.5px}
 .filters .btn{padding:6px 10px;font-size:12.5px}
@@ -269,15 +349,27 @@ a.page-link:hover{background:var(--color-background-secondary);color:var(--color
 .page-link-disabled{color:var(--color-text-tertiary);opacity:.5}
 
 .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
-.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
 /* Statuskleur-mapping (zie --color-status-* in :root) — betekenis ligt vast: elke module
-   die een van deze statusnamen gebruikt krijgt automatisch dezelfde kleur. */
-.badge-open{background:var(--color-status-open-bg);color:var(--color-status-open)}
-.badge-progress,.badge-in_behandeling,.badge-aangevraagd,.badge-nieuw,.badge-in_onderzoek,.badge-bevestigd{background:var(--color-status-behandeling-bg);color:var(--color-status-behandeling)}
-.badge-wait,.badge-wacht_op_info,.badge-in_overweging,.badge-besteld{background:var(--color-status-wachtend-bg);color:var(--color-status-wachtend)}
-.badge-done,.badge-opgelost,.badge-afgehandeld,.badge-goedgekeurd,.badge-geleverd,.badge-actief,.badge-uitgevoerd{background:var(--color-status-opgelost-bg);color:var(--color-status-opgelost)}
+   die een van deze statusnamen gebruikt krijgt automatisch dezelfde kleur. De stip (::before)
+   staat alleen op déze statusgroepen, niet op .badge in het algemeen — .badge wordt ook gebruikt
+   voor niet-status chips (bv. kb-nav-count, kb-tag) die geen stip horen te hebben. */
+.badge-open::before,.badge-received::before,.badge-parsed::before,.badge-stored::before,
+.badge-progress::before,.badge-in_behandeling::before,.badge-aangevraagd::before,.badge-nieuw::before,.badge-in_onderzoek::before,.badge-bevestigd::before,.badge-analyzed::before,
+.badge-wait::before,.badge-wacht_op_info::before,.badge-in_overweging::before,.badge-besteld::before,.badge-draft_created::before,.badge-in_review::before,
+.badge-done::before,.badge-opgelost::before,.badge-afgehandeld::before,.badge-goedgekeurd::before,.badge-geleverd::before,.badge-actief::before,.badge-uitgevoerd::before,.badge-published::before,
+.badge-closed::before,.badge-gesloten::before,.badge-afgewezen::before,.badge-afgekeurd::before,.badge-inactief::before,.badge-geaccepteerd::before,
+.badge-failed::before,
+.badge-risico-laag::before,.badge-risico-gemiddeld::before,.badge-risico-hoog::before,.badge-risico-kritiek::before,
+.badge-voorraad-ok::before,.badge-voorraad-laag::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;
+}
+.badge-open,.badge-received,.badge-parsed,.badge-stored{background:var(--color-status-open-bg);color:var(--color-status-open)}
+.badge-progress,.badge-in_behandeling,.badge-aangevraagd,.badge-nieuw,.badge-in_onderzoek,.badge-bevestigd,.badge-analyzed{background:var(--color-status-behandeling-bg);color:var(--color-status-behandeling)}
+.badge-wait,.badge-wacht_op_info,.badge-in_overweging,.badge-besteld,.badge-draft_created,.badge-in_review{background:var(--color-status-wachtend-bg);color:var(--color-status-wachtend)}
+.badge-done,.badge-opgelost,.badge-afgehandeld,.badge-goedgekeurd,.badge-geleverd,.badge-actief,.badge-uitgevoerd,.badge-published{background:var(--color-status-opgelost-bg);color:var(--color-status-opgelost)}
 .badge-closed,.badge-gesloten,.badge-afgewezen,.badge-afgekeurd,.badge-inactief,.badge-geaccepteerd{background:var(--color-status-gesloten-bg);color:var(--color-status-gesloten)}
 .badge-keyuser{background:var(--color-risk-hoog-bg);color:var(--color-risk-hoog)}
+.badge-failed{background:var(--color-risk-hoog-bg);color:var(--color-risk-hoog)}
 
 /* CyberRisico-niveaus — eigen kleurschaal, zie --color-risk-* in :root. */
 .badge-risico-laag{background:var(--color-risk-laag-bg);color:var(--color-risk-laag)}
@@ -378,6 +470,15 @@ a.kpi-card{cursor:pointer}
   }
 }
 
+/* Detailpagina-grid (hoofdkolom + 340px zijkolom) — zie Lovable tickets.$id.tsx. Simpeler dan
+   .detail-layout-3col hierboven omdat de zijkolom nu een losse kaart per onderwerp is i.p.v. één
+   kaart met interne grid-areas. */
+.grid-detail{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.grid-detail-main,.grid-detail-side{min-width:0}
+.grid-detail-side{display:flex;flex-direction:column;gap:12px}
+.detail-side-heading{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);margin-bottom:10px}
+@media (max-width:1000px){.grid-detail{grid-template-columns:1fr}}
+
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .form-group{margin-bottom:16px}
 .form-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;display:block;font-weight:500}
@@ -442,3 +543,41 @@ input[type=file]{font-size:12px;color:var(--color-text-secondary)}
 @media (min-width:992px){
   .sidebar-close{display:none}
 }
+
+/* MailMind intro-banner — zie Lovable mailmind.tsx. */
+.intro-banner{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:18px;background:linear-gradient(135deg,var(--color-status-open-bg),var(--color-accent-bg) 130%);border:1px solid var(--color-accent-border)}
+.intro-banner-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--border-radius-md);background:var(--color-primary);color:var(--color-primary-text);flex-shrink:0}
+.intro-banner-title{font-size:13.5px;font-weight:600}
+.intro-banner-desc{font-size:12px;color:var(--color-text-secondary);margin-top:2px;max-width:640px}
+.intro-banner-stats{display:flex;gap:22px;margin-left:auto}
+.intro-banner-stat{text-align:center}
+.intro-banner-stat-val{font-size:19px;font-weight:700}
+.intro-banner-stat-label{font-size:9.5px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+
+/* Pipeline-kanban (Ontvangen → AI-analyse → Concept → Gepubliceerd) — zie Lovable mailmind.tsx. */
+.pipeline-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0}
+.pipeline-col-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pipeline-col-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:var(--border-radius-md);flex-shrink:0}
+.pipeline-col-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.pipeline-col-count{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:4px;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.pipeline-col-sub{font-size:11px;color:var(--color-text-tertiary)}
+.pipeline-col-body{flex:1;min-height:220px;background:var(--color-background-secondary);border:1px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);padding:8px;display:flex;flex-direction:column;gap:8px}
+.pipeline-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:9px 10px;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease}
+.pipeline-card:hover{border-color:var(--color-primary);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.pipeline-card-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
+.pipeline-card-id{font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary)}
+.pipeline-card-title{font-size:12px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pipeline-card-sub{font-size:10.5px;color:var(--color-text-tertiary);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pipeline-card-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.pipeline-card-cat{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.pipeline-empty{text-align:center;font-size:11px;color:var(--color-text-tertiary);padding:26px 0}
+@media (max-width:1100px){.pipeline-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.pipeline-grid{grid-template-columns:1fr}}
+
+/* "Laatste conceptartikel"-preview (origineel bericht naast AI-concept) — zie Lovable mailmind.tsx. */
+.concept-preview{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.concept-preview>div{padding:18px}
+.concept-preview>div:first-child{border-right:0.5px solid var(--color-border-tertiary)}
+.concept-preview-label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.concept-preview-label.accent{color:var(--color-primary)}
+@media (max-width:800px){.concept-preview{grid-template-columns:1fr}.concept-preview>div:first-child{border-right:none;border-bottom:0.5px solid var(--color-border-tertiary)}}

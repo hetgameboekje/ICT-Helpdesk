@@ -6,9 +6,11 @@
 /** @var array<string,bool> $navRechten */
 /** @var array<string,int> $navBadges */
 /** @var string $csrfToken */
+/** @var array<int,string> $breadcrumbs */
 
 $navRechten = $navRechten ?? [];
 $navBadges = $navBadges ?? [];
+$breadcrumbs = $breadcrumbs ?? [];
 $active = $activeModule ?? '';
 ?>
 <!DOCTYPE html>
@@ -42,7 +44,19 @@ $active = $activeModule ?? '';
             <button type="button" class="topbar-menu-btn d-lg-none" id="sidebarOpenBtn" aria-label="Navigatie openen">
                 <i class="bi bi-list"></i>
             </button>
-            <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Intranet') ?></div>
+            <div class="topbar-titles">
+                <?php if (!empty($breadcrumbs)): ?>
+                    <div class="topbar-breadcrumb"><?= htmlspecialchars(implode(' / ', $breadcrumbs)) ?></div>
+                <?php endif; ?>
+                <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Intranet') ?></div>
+            </div>
+            <!-- Nog niet functioneel: geen backend-zoekindex over tickets/medewerkers/KB — zie
+                 CLAUDE.md > "Nog te herdesignen/uit te werken met Lovable". Zuiver visueel, zoals in de mockup. -->
+            <div class="topbar-search d-none d-lg-flex">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Zoek tickets, medewerkers, KB-artikelen&hellip;" disabled>
+                <kbd>&#8984;K</kbd>
+            </div>
         </header>
 
         <main class="main<?= $active === 'dashboard' ? ' page-dashboard' : '' ?>">

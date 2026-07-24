@@ -55,7 +55,7 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" type="submit">Opslaan</button>
+      <button class="btn btn-accent" type="submit">Opslaan</button>
       <a class="btn" href="/tickets/<?= $item['id'] ?>">Annuleren</a>
     </div>
   </form>

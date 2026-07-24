@@ -19,6 +19,7 @@ class TicketController extends CrudController
     protected string $routeBase = 'tickets';
     protected string $activeModule = 'tickets';
     protected string $pageTitle = 'Tickets';
+    protected array $breadcrumbs = ['Support'];
 
     private const STATUS_LABELS = [
         'open' => 'Open',
@@ -82,6 +83,23 @@ class TicketController extends CrudController
         return $items;
     }
 
+    /** Aantallen per status voor de statusfilter-tabs (zie Views/TicketView/index.php) — geteld in het
+     *  al opgehaalde, scope-gefilterde array, dus geen extra database-query's per status nodig. */
+    protected function extraViewData(array $allItems): array
+    {
+        $counts = ['alle' => count($allItems)];
+        foreach (array_keys(self::STATUS_LABELS) as $status) {
+            $counts[$status] = 0;
+        }
+        foreach ($allItems as $item) {
+            if (isset($counts[$item['status']])) {
+                $counts[$item['status']]++;
+            }
+        }
+
+        return ['statusCounts' => $counts];
+    }
+
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
@@ -112,8 +130,9 @@ class TicketController extends CrudController
                 fn (array $a) => !in_array($a['id'], $gekoppeldeIds)
             ),
             'activeModule' => $this->activeModule,
-            'pageTitle' => $this->pageTitle,
+            'pageTitle' => "#{$item['id']} — {$item['titel']}",
             'routeBase' => $this->routeBase,
+            'breadcrumbs' => ['Support', 'Tickets'],
         ]);
     }
 

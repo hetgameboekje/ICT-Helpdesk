@@ -54,7 +54,7 @@ $chartData   = array_map(fn(array $d) => $d['aantal'], $cyberrisicosPerDag);
 
     <div class="ms-auto d-flex gap-2">
         <?php if ($mag['tickets']['schrijven']): ?>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dashTicketModal">
+        <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#dashTicketModal">
             <i class="bi bi-plus-circle"></i> Nieuw ticket
         </button>
         <?php endif; ?>
