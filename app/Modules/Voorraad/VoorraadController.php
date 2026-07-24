@@ -15,6 +15,7 @@ class VoorraadController extends CrudController
     protected string $routeBase = 'voorraad';
     protected string $activeModule = 'voorraad';
     protected string $pageTitle = 'Voorraad';
+    protected array $breadcrumbs = ['Assets & Beheer'];
     protected ?string $searchColumn = 'barcode';
 
     private const STATUS_LABELS = [
@@ -176,17 +177,14 @@ class VoorraadController extends CrudController
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
-        $item = VoorraadItemModel::findWithRelations($id);
 
-        if ($item === null) {
+        if (VoorraadItemModel::find($id) === null) {
             http_response_code(404);
             echo 'Niet gevonden.';
             return;
         }
 
         $this->render("{$this->viewDir}/show", [
-            'item' => $item,
-            'barcodeSvg' => Barcode::code128Svg($item['barcode']),
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,

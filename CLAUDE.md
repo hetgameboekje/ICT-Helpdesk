@@ -133,7 +133,9 @@ since there's no test suite):**
 3. ✅ Kennisbank done (3-laags + echte Lovable-conversie, zie "API-architectuur" hieronder);
    EmailVerwerking/MailMind (`src/routes/mailmind.tsx`) nog niet opgepakt.
 4. ✅ Done — Verbeterpunt, Reflectie (3-laags + echte Lovable-conversie, zie "API-architectuur").
-5. Voorraad, Device, Printer, HardwareUitgave, Uitgifte, CyberRisico.
+5. ✅ Voorraad, Device, Printer, Uitgifte, CyberRisico gedaan (zie "API-architectuur" hieronder).
+   HardwareUitgave overgeslagen — geen Lovable-mockup voor dat concept, zie
+   "Nog te herdesignen/uit te werken met Lovable".
 6. Medewerker, Agenda, Account.
 7. Beheer, Tools, Script, Schijfgebruik.
 
@@ -155,6 +157,12 @@ omdat de mockup iets toont zonder (volledige) echte functionaliteit erachter. Ge
 voor een vervolgprompt in Lovable om de UX daadwerkelijk uit te werken, waarna de PHP-kant het opnieuw
 1-op-1 kan overnemen.
 
+- **HardwareUitgave (inkoop-aanvraagworkflow)**: geen Lovable-mockup voor dit concept — Lovable's
+  routes `/modules/hardware-uitgaven` en `/modules/uitgifte` modelleren allebei onze `Uitgifte`-module
+  (item uitgeven aan medewerker), niet de inkoop-goedkeuringsflow die `HardwareUitgave` heet. Nog
+  volledig op de oude server-rendered routes. Eerst een eigen Lovable-prompt nodig (velden:
+  omschrijving/leverancier/bedrag/aankoopdatum/afdeling/aanvrager, status
+  `aangevraagd → goedgekeurd/afgekeurd → besteld → geleverd`) voordat dit omgezet kan worden.
 - **Topbar — globale zoekbalk (⌘K)**: staat overal zichtbaar (`app/Views/layouts/app.php`) maar is
   puur decoratief (disabled input) — geen backend-zoekindex over tickets/medewerkers/KB-artikelen.
   Ook in de Lovable-mockup zelf niet functioneel (ongecontroleerde input zonder resultaten).
@@ -352,6 +360,57 @@ bron `src/routes/modules.verbeterpunt.tsx` / `modules.reflectie.tsx` via de Lova
   nog niet was genoteerd — op te pakken bij een volgende polish-pas op deze module.
 - **Nog niet meegenomen:** `/verbeterpunten/create`/`/{id}/edit` en `/reflecties/create`/`/{id}/edit`
   staan nog op de oude server-rendered formulieren.
+
+**Voorraad, Apparaten, Printers, CyberRisico, Uitgifte (afgerond, stap 5 van de rollout hierboven):**
+zelfde 3-laags patroon; bron `src/routes/modules.voorraad.tsx`, `modules.device.tsx`,
+`modules.printer.tsx`, `modules.cyberrisico.tsx`, `modules.uitgifte.tsx` +
+`modules.hardware-uitgaven.tsx` via de Lovable MCP.
+
+**Naamcollisie ontdekt:** Lovable's route `/modules/hardware-uitgaven` is inhoudelijk gewoon een
+hardware-gefilterde subview van `/modules/uitgifte` (zelfde `uitgiften`-mockdata, "Hardware-specifiek
+overzicht"-link ertussen) — het modelleert dus onze **Uitgifte**-module (item met barcode uitgeven
+aan een medewerker, retour nemen). Onze module die letterlijk `HardwareUitgave` heet is een heel
+ander concept (inkoop-aanvraagworkflow: `aangevraagd → goedgekeurd/afgekeurd → besteld → geleverd`,
+bedrag/leverancier, geen medewerker/serienummer-koppeling) — daar bestaat **geen** Lovable-mockup
+voor. Er is dus maar één conversie gedaan (Uitgifte, op `/uitgiften`); `HardwareUitgave` blijft
+volledig ongewijzigd op de oude server-rendered routes en staat hieronder toegevoegd aan
+"Nog te herdesignen/uit te werken met Lovable" — eerst een eigen Lovable-prompt nodig voor het
+inkoop-aanvraagscherm voordat dit omgezet kan worden.
+
+Per module, grote afwijkingen t.o.v. de mockup (in alle vijf gevallen: widgets zonder echte data
+weggelaten i.p.v. nagemaakt, real KPI's/acties in de plaats):
+- **Voorraad**: Lovable gaat uit van kwantiteitsbeheer (aantal/minimum, bijboeken/afboeken,
+  voorraadbalk) — `voorraad_items` is juist stuksgewijs geserialiseerd (één rij per fysiek item,
+  eigen barcode/serienummer, status `op_voorraad`/`uitgegeven`/`afgeschreven`). Bijboeken/afboeken
+  bestaat niet; de "mutatiehistorie" is vervangen door de echte uitgiftehistorie van het item
+  (nieuwe `UitgifteModel::forVoorraadItem()`). **Alleen lezen** (list/find) in de API — aanmaken/
+  bewerken heeft eigen serienummer-uniekheid/barcode-opbouw/DxDiag-upload-logica en blijft op de
+  oude formulieren (`/voorraad/create`, `/voorraad/{id}/edit`).
+- **Apparaten (Device)**: Lovable gaat uit van live monitoring (online/offline, status, OS,
+  serienummer, locatie, herstart/wipe) — `devices` is puur een CSV-import-resultaat (naam,
+  gekoppelde medewerker, laatste import, geïmporteerde software). Al die fictieve velden/acties zijn
+  weggelaten; de echte geïmporteerde software (die Lovable niet toont) staat wel in het
+  detailpaneel. **Geen `create` in de API** — aanmaken loopt alleen via CSV-upload
+  (`DeviceController::store()`), "Registreer device" linkt door naar die pagina.
+- **Printers**: Lovable gaat uit van live printer-telemetrie (online/offline, tonerpercentages,
+  printjobs, herstart/testpagina) — niets daarvan bestaat (`printers` is een simpele catalogus:
+  naam/computernaam/type/driver/ip/opmerking). Vervangen door echte velden + de bestaande (in de
+  mockup niet voorkomende) rundll32-installcommando-generator met kopieerknop.
+- **CyberRisico**: Lovable gaat uit van een kans(1-5)×impact(1-5)-risicomatrix met afgeleid niveau —
+  die twee kolommen bestaan niet; wij hebben een direct `prioriteit`-veld (laag/middel/hoog/kritiek)
+  en een los `status`-veld. De risicomatrix-widget is vervangen door een statusbadge + het echte
+  logboek (`cyberrisico_logs`, zelfde patroon als Tickets). Prioriteits-KPI's/-badges hergebruiken de
+  bestaande `--color-risk-*`/`badge-risico-*`-tokens ("middel" hergebruikt de "gemiddeld"-klasse).
+- **Uitgifte**: geen "soort"-tabs (hardware/telefoon/toegangspas/overig) — dat onderscheid bestaat
+  niet in het datamodel. "Nieuwe uitgifte" is een echt werkend inline formulier (barcode + naam,
+  `<datalist>`-autocomplete tegen de bestaande `/uitgiften/items`/`/uitgiften/namen`-lookups,
+  POST naar de nieuwe `/api/v1/uitgiften`) i.p.v. een dode knop. Retour nemen blijft de bestaande
+  dual-write-actie (zet zowel de uitgifte als het gekoppelde voorraad-item bij).
+
+Lokaal geverifieerd voor alle vijf: `php -l` schoon, server boot zonder fatale fouten op alle nieuwe
+HTML- en API-routes (302 resp. 401 zonder sessie). Volledige ingelogde klik-door-test nog te doen
+door QA (zelfde beperking als Kennisbank/Verbeterpunt/Reflectie hierboven — geen lokale DB in deze
+omgeving).
 
 ## Roadmap / openstaande verbeterpunten
 

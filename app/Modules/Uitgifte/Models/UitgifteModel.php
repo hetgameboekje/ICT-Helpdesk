@@ -33,6 +33,14 @@ class UitgifteModel extends Model
         return $row === false ? null : $row;
     }
 
+    /** Uitgiftehistorie van één voorraad-item, nieuwste eerst — voor het Voorraad-detailscherm. */
+    public static function forVoorraadItem(int $voorraadItemId): array
+    {
+        $stmt = Database::pdo()->prepare(self::SELECT . ' WHERE u.voorraad_item_id = ? ORDER BY u.created_at DESC');
+        $stmt->execute([$voorraadItemId]);
+        return $stmt->fetchAll();
+    }
+
     /** Uitgiften van een medewerker — matcht op naam, zie medewerker-detailpagina. */
     public static function forMedewerkerNaam(string $naam): array
     {

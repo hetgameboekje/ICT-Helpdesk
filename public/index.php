@@ -2,10 +2,15 @@
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Api\V1\CyberRisicosApiController;
+use App\Api\V1\DevicesApiController;
 use App\Api\V1\KennisbankApiController;
+use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
+use App\Api\V1\UitgiftenApiController;
 use App\Api\V1\VerbeterpuntenApiController;
+use App\Api\V1\VoorraadApiController;
 use App\Core\Router;
 use App\Modules\Account\AccountController;
 use App\Modules\Agenda\AgendaController;
@@ -187,6 +192,32 @@ $router->post('/api/v1/reflecties', [ReflectiesApiController::class, 'store']);
 $router->get('/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'show']);
 $router->add('PUT', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'destroy']);
+
+$router->get('/api/v1/printers', [PrintersApiController::class, 'index']);
+$router->post('/api/v1/printers', [PrintersApiController::class, 'store']);
+$router->get('/api/v1/printers/{id}', [PrintersApiController::class, 'show']);
+$router->add('PUT', '/api/v1/printers/{id}', [PrintersApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/printers/{id}', [PrintersApiController::class, 'destroy']);
+
+$router->get('/api/v1/apparaten', [DevicesApiController::class, 'index']);
+$router->get('/api/v1/apparaten/{id}', [DevicesApiController::class, 'show']);
+$router->add('PUT', '/api/v1/apparaten/{id}', [DevicesApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/apparaten/{id}', [DevicesApiController::class, 'destroy']);
+
+$router->get('/api/v1/cyberrisicos', [CyberRisicosApiController::class, 'index']);
+$router->post('/api/v1/cyberrisicos', [CyberRisicosApiController::class, 'store']);
+$router->get('/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'show']);
+$router->add('PUT', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'destroy']);
+$router->post('/api/v1/cyberrisicos/{id}/log', [CyberRisicosApiController::class, 'addLog']);
+
+$router->get('/api/v1/voorraad', [VoorraadApiController::class, 'index']);
+$router->get('/api/v1/voorraad/{id}', [VoorraadApiController::class, 'show']);
+
+$router->get('/api/v1/uitgiften', [UitgiftenApiController::class, 'index']);
+$router->post('/api/v1/uitgiften', [UitgiftenApiController::class, 'store']);
+$router->get('/api/v1/uitgiften/{id}', [UitgiftenApiController::class, 'show']);
+$router->post('/api/v1/uitgiften/{id}/retour', [UitgiftenApiController::class, 'retour']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);

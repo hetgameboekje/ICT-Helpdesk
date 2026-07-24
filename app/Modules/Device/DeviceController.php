@@ -16,6 +16,7 @@ class DeviceController extends CrudController
     protected string $routeBase = 'apparaten';
     protected string $activeModule = 'apparaten';
     protected string $pageTitle = 'Applicaties';
+    protected array $breadcrumbs = ['Assets & Beheer'];
     protected ?string $searchColumn = 'naam';
 
     protected function filterOptions(array $allItems): array
@@ -34,17 +35,14 @@ class DeviceController extends CrudController
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
-        $item = DeviceModel::findWithRelations($id);
 
-        if ($item === null) {
+        if (DeviceModel::find($id) === null) {
             http_response_code(404);
             echo 'Niet gevonden.';
             return;
         }
 
         $this->render("{$this->viewDir}/show", [
-            'item' => $item,
-            'software' => DeviceSoftwareModel::forDevice($id),
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,

@@ -12,6 +12,7 @@ class PrinterController extends CrudController
     protected string $routeBase = 'printers';
     protected string $activeModule = 'printers';
     protected string $pageTitle = 'Printers';
+    protected array $breadcrumbs = ['Assets & Beheer'];
     protected ?string $searchColumn = 'naam';
 
     protected function filterOptions(array $allItems): array

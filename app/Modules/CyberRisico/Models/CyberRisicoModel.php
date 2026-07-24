@@ -36,6 +36,23 @@ class CyberRisicoModel extends Model
         return $row === false ? null : $row;
     }
 
+    /** Zelfde regel als TicketModel::alleenGewijzigdeVelden(): lege/ongewijzigde velden niet meesturen in een update. */
+    public static function alleenGewijzigdeVelden(array $huidig, array $nieuw): array
+    {
+        foreach ($nieuw as $veld => $waarde) {
+            if ($waarde === '' || $waarde === null) {
+                unset($nieuw[$veld]);
+                continue;
+            }
+
+            if (array_key_exists($veld, $huidig) && (string) $huidig[$veld] === (string) $waarde) {
+                unset($nieuw[$veld]);
+            }
+        }
+
+        return $nieuw;
+    }
+
     public static function countOpen(): int
     {
         $cyberrisicos = (int) Database::pdo()->query(

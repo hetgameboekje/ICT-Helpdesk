@@ -14,6 +14,7 @@ class UitgifteController extends CrudController
     protected string $routeBase = 'uitgiften';
     protected string $activeModule = 'uitgiften';
     protected string $pageTitle = 'Uitgifte';
+    protected array $breadcrumbs = ['Assets & Beheer'];
     protected ?string $searchColumn = 'medewerker_naam';
 
     protected function filterOptions(array $allItems): array

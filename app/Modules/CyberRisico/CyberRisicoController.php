@@ -3,7 +3,6 @@
 namespace App\Modules\CyberRisico;
 
 use App\Core\CrudController;
-use App\Modules\CyberRisico\Models\CyberRisicoLogModel;
 use App\Modules\CyberRisico\Models\CyberRisicoModel;
 use App\Shared\Afdeling\Models\AfdelingModel;
 use App\Shared\User\Models\UserModel;
@@ -15,6 +14,7 @@ class CyberRisicoController extends CrudController
     protected string $routeBase = 'cyberrisicos';
     protected string $activeModule = 'cyberrisicos';
     protected string $pageTitle = "Cyberrisico's";
+    protected array $breadcrumbs = ['Assets & Beheer'];
     protected ?string $searchColumn = 'titel';
 
     protected function scopeAllowed(array $item): bool
@@ -34,7 +34,7 @@ class CyberRisicoController extends CrudController
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
-        $item = CyberRisicoModel::findWithRelations($id);
+        $item = CyberRisicoModel::find($id);
 
         if ($item === null) {
             http_response_code(404);
@@ -48,8 +48,6 @@ class CyberRisicoController extends CrudController
         }
 
         $this->render("{$this->viewDir}/show", [
-            'item' => $item,
-            'logs' => CyberRisicoLogModel::forCyberRisico($id),
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,
