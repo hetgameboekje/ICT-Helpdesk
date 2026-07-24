@@ -6,6 +6,7 @@ use App\Api\V1\KennisbankApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
 use App\Api\V1\VerbeterpuntenApiController;
+use App\Api\V1\VoorraadApiController;
 use App\Core\Router;
 use App\Modules\Account\AccountController;
 use App\Modules\Agenda\AgendaController;
@@ -189,6 +190,11 @@ $router->get('/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'show']
 $router->add('PUT', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'destroy']);
 $router->post('/api/v1/reflecties/{id}/log', [ReflectiesApiController::class, 'addLog']);
+
+$router->get('/api/v1/voorraad', [VoorraadApiController::class, 'index']);
+$router->get('/api/v1/voorraad/{id}', [VoorraadApiController::class, 'show']);
+$router->add('PUT', '/api/v1/voorraad/{id}/status', [VoorraadApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/voorraad/{id}', [VoorraadApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
