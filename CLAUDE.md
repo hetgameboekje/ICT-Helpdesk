@@ -153,10 +153,13 @@ since there's no test suite):**
    EmailVerwerking/MailMind (`src/routes/mailmind.tsx`) nog niet opgepakt.
 4. ✅ Done — Verbeterpunt, Reflectie (3-laags + echte Lovable-conversie, zie "API-architectuur").
 5. ✅ Voorraad, Device, Printer, Uitgifte, CyberRisico gedaan (zie "API-architectuur" hieronder).
-   HardwareUitgave overgeslagen — geen Lovable-mockup voor dat concept, zie
-   "Nog te herdesignen/uit te werken met Lovable".
-6. Medewerker, Agenda, Account.
-7. Beheer, Tools, Script, Schijfgebruik.
+   HardwareUitgave was aanvankelijk overgeslagen (geen Lovable-mockup voor dat concept) maar is
+   alsnog gedaan in stap 7 hieronder — zie de sectie "HardwareUitgave" daar voor de aanpak.
+6. ✅ Done — Medewerker (3-laags), Agenda (sidebar toegevoegd aan de bestaande FullCalendar-pagina,
+   geen 3-laags herbouw — zie hieronder), Account (herstyled, geen 3-laags nodig — singleton-pagina).
+7. ✅ Done — Beheer, Tools (gedeelde tabbladnavigatie over bestaande pagina's, geen 3-laags herbouw
+   — zie hieronder), Script, Schijfgebruik (3-laags), en alsnog HardwareUitgave (3-laags, zie
+   hieronder).
 
 Each step is a visual/structural pass only: keep existing routes, controllers, Dutch UI text, and
 behavior unchanged unless a bug is found along the way. Click through the affected module locally
@@ -176,12 +179,6 @@ omdat de mockup iets toont zonder (volledige) echte functionaliteit erachter. Ge
 voor een vervolgprompt in Lovable om de UX daadwerkelijk uit te werken, waarna de PHP-kant het opnieuw
 1-op-1 kan overnemen.
 
-- **HardwareUitgave (inkoop-aanvraagworkflow)**: geen Lovable-mockup voor dit concept — Lovable's
-  routes `/modules/hardware-uitgaven` en `/modules/uitgifte` modelleren allebei onze `Uitgifte`-module
-  (item uitgeven aan medewerker), niet de inkoop-goedkeuringsflow die `HardwareUitgave` heet. Nog
-  volledig op de oude server-rendered routes. Eerst een eigen Lovable-prompt nodig (velden:
-  omschrijving/leverancier/bedrag/aankoopdatum/afdeling/aanvrager, status
-  `aangevraagd → goedgekeurd/afgekeurd → besteld → geleverd`) voordat dit omgezet kan worden.
 - **Topbar — globale zoekbalk (⌘K)**: staat overal zichtbaar (`app/Views/layouts/app.php`) maar is
   puur decoratief (disabled input) — geen backend-zoekindex over tickets/medewerkers/KB-artikelen.
   Ook in de Lovable-mockup zelf niet functioneel (ongecontroleerde input zonder resultaten).
@@ -456,6 +453,54 @@ Lokaal geverifieerd voor alle vijf: `php -l` schoon, server boot zonder fatale f
 HTML- en API-routes (302 resp. 401 zonder sessie). Volledige ingelogde klik-door-test nog te doen
 door QA (zelfde beperking als Kennisbank/Verbeterpunt/Reflectie hierboven — geen lokale DB in deze
 omgeving).
+
+**HardwareUitgave, Medewerker, Agenda, Account, Beheer, Tools, Script, Schijfgebruik (afgerond,
+stappen 6-7 van de rollout hierboven):** sluit de rollout af — alle 17 modules zijn nu langs het
+Lovable-project gehaald, hetzij als volledige 3-laags-conversie, hetzij als bewuste restyle zonder
+3-laags-herbouw waar het scherm of de onderliggende data daar niet 1-op-1 op aansloot.
+
+Volledig 3-laags (Service + `Api\V1\*Controller` + thin-shell view + split-view JS, bron opgehaald
+via de Lovable MCP tegen `src/routes/modules.<naam>.tsx`):
+- **HardwareUitgave**: `HardwareUitgaveService` + `Api\V1\HardwareUitgavenApiController`
+  (`/api/v1/hardware-uitgaven*`) + `hardware-uitgave-index.js`. Lost de eerder genoteerde
+  naamcollisie op (zie de "Voorraad, Apparaten, Printers, CyberRisico, Uitgifte"-sectie hierboven):
+  geen Lovable-mockup voor dit concept, dus omgezet naar het echte aankoopaanvraag-trackermodel
+  (omschrijving/leverancier/bedrag/aankoopdatum, status `aangevraagd → goedgekeurd/afgekeurd →
+  besteld → geleverd`) i.p.v. de mockup's "uitgifte aan medewerker met retour"-concept dat al apart
+  bestaat als `Uitgifte`.
+- **Medewerker**: `MedewerkerService` + `Api\V1\MedewerkersApiController` + kaarten-grid/detail JS.
+- **Script**: `ScriptService` + `Api\V1\ScriptsApiController` + `script-index.js` (terminal-style
+  detail). Geen uitvoeringsgeschiedenis/"Uitvoeren"-knop — Script is een kopieer-en-plak-bibliotheek,
+  geen executie-omgeving.
+- **Schijfgebruik**: `SchijfgebruikService` + `Api\V1\SchijfgebruikApiController` +
+  `schijfgebruik-index.js` (ring-gauge lijst). Alleen de lijst is overgezet — de detailpagina met
+  medewerker-koppeling blijft server-rendered.
+
+Bewust géén 3-laags-herbouw (bestaande functionaliteit ging boven mockup-gelijkheid):
+- **Agenda**: draait al op een volwaardige FullCalendar-integratie (drag/resize/click-to-create,
+  maand/week/dag) die functioneel verder gaat dan Lovable's statische week-grid-mockup — vervangen
+  zou functionaliteit kosten. Alleen de ontbrekende sidebar is toegevoegd ("Team vandaag" met een
+  echte in-behandeling-telling per medewerker via de nieuwe
+  `MedewerkerModel::alleMetInBehandelingTellingen()`, plus een legenda met de bestaande
+  event-kleuren).
+- **Account**: singleton-pagina (geen lijst, dus geen Service/API-laag nodig) — alleen de bestaande
+  profiel/bewerken-views herstyled naar Lovable's kaartsecties. 2FA/actieve sessies/notificatie-
+  voorkeuren uit de mockup bestaan niet in dit systeem (sessie-cookie-auth zonder MFA) en zijn
+  weggelaten i.p.v. nagemaakt.
+- **Beheer en Tools**: de mockups bundelen meerdere features als client-side tabs op één scherm
+  (Gebruikers&rechten/API-sleutels/E-mailqueue/Logs, resp. Telefoonlijst/Handtekening/Herstart-
+  herinneringen). Dit waren al losse, volledig werkende server-rendered pagina's — samenvoegen tot
+  één client-side app zou onnodig regressierisico geven. Opgelost met gedeelde tab-navigatie-partials
+  (`app/Views/partials/beheer-tabs.php`, `tools-tabs.php`) die dezelfde tabs tonen als gewone
+  paginalinks tussen de bestaande pagina's, plus een extra tab voor het echte onderdeel zonder
+  Lovable-tegenhanger (Systeembeheer resp. Installatie).
+
+Overige bewuste datamodel-afwijkingen (mockdata paste niet op het echte schema): Medewerker-status
+kent geen "verlof", alleen actief/inactief.
+
+Lokaal geverifieerd: `php -l` schoon op alle betrokken bestanden, server boot zonder fatale fouten op
+de nieuwe HTML- en API-routes. Volledige ingelogde klik-door-test nog te doen door QA (zelfde
+beperking als de eerdere modules — geen lokale DB in deze omgeving).
 
 ## Roadmap / openstaande verbeterpunten
 
