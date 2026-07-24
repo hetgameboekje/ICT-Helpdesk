@@ -1,9 +1,11 @@
 <?php
 /** @var array $signatures */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
 
 use App\Core\Table;
 ?>
+<?= toolsTabs('handtekeningen') ?>
 <div class="page-header">
   <div style="display:flex;align-items:center;gap:12px">
     <a class="btn" href="/tools" style="padding:6px 10px">&larr;</a>

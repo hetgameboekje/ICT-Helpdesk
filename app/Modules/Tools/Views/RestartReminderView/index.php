@@ -1,11 +1,13 @@
 <?php
 /** @var array $apparaten */
 /** @var array $instellingen */
+require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
 
 $flashSuccess = $_SESSION['flash_success'] ?? null;
 $flashError = $_SESSION['flash_error'] ?? null;
 unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 ?>
+<?= toolsTabs('herstart') ?>
 <div class="page-header">
   <div style="display:flex;align-items:center;gap:12px">
     <a class="btn" href="/tools" style="padding:6px 10px">&larr;</a>

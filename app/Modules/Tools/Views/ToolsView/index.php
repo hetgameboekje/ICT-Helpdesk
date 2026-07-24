@@ -1,7 +1,9 @@
 <?php
 /** @var array|null $laatsteTelefoonlijst */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
 ?>
+<?= toolsTabs('overzicht') ?>
 <div class="page-header">
   <div class="page-title">Tools</div>
 </div>
