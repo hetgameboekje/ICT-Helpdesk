@@ -3,7 +3,9 @@
 /** @var bool $gitBeschikbaar */
 /** @var bool $devModus */
 /** @var bool $gitPullEnabled */
+require_once APP_ROOT . '/app/Views/partials/beheer-tabs.php';
 ?>
+<?= beheerTabs('systeem') ?>
 <div class="page-header">
   <div class="page-title">Beheer</div>
 </div>

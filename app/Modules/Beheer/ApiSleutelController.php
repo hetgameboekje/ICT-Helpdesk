@@ -11,6 +11,7 @@ class ApiSleutelController extends Controller
     public function index(): void
     {
         $this->requireAdmin();
+        require_once APP_ROOT . '/app/Views/partials/beheer-tabs.php';
 
         $sleutels = ApiKeyModel::all('naam ASC');
         $gedeactiveerd = ApiKeyModel::allGedeactiveerd('naam ASC');
@@ -36,7 +37,8 @@ class ApiSleutelController extends Controller
                 ['class' => 'col-1', 'sortable' => false])
             ->rows($sleutels);
 
-        $content = '<div class="page-header"><div class="page-title">API-sleutels</div>'
+        $content = beheerTabs('api-sleutels')
+            . '<div class="page-header"><div class="page-title">API-sleutels</div>'
             . '<a class="btn btn-primary" href="/beheer/api-sleutels/nieuw">+ Nieuwe sleutel</a></div>'
             . ($flashSuccess ? '<div class="alert alert-success">' . htmlspecialchars($flashSuccess) . '</div>' : '');
 

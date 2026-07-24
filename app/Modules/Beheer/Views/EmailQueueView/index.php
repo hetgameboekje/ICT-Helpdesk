@@ -1,6 +1,7 @@
 <?php
 /** @var array $emails */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/beheer-tabs.php';
 
 $statusLabels = [
     'pending' => 'In wachtrij',
@@ -13,6 +14,7 @@ $flashSuccess = $_SESSION['flash_success'] ?? null;
 $flashError = $_SESSION['flash_error'] ?? null;
 unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 ?>
+<?= beheerTabs('emails') ?>
 <div class="page-header">
   <div class="page-title">E-mails</div>
   <div>
