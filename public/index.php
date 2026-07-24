@@ -3,6 +3,7 @@
 require __DIR__ . '/../app/bootstrap.php';
 
 use App\Api\V1\DevicesApiController;
+use App\Api\V1\HardwareUitgavenApiController;
 use App\Api\V1\KennisbankApiController;
 use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
@@ -205,6 +206,11 @@ $router->add('DELETE', '/api/v1/apparaten/{id}', [DevicesApiController::class, '
 $router->get('/api/v1/printers', [PrintersApiController::class, 'index']);
 $router->get('/api/v1/printers/{id}', [PrintersApiController::class, 'show']);
 $router->add('DELETE', '/api/v1/printers/{id}', [PrintersApiController::class, 'destroy']);
+
+$router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class, 'index']);
+$router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
+$router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
