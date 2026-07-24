@@ -170,7 +170,7 @@ section.block{ padding: 64px 0; border-top: 1px solid var(--border-soft); }
 /* ============================================================
    IMPACT CARDS
    ============================================================ */
-.impact-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:18px; }
+.impact-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:18px; }
 .impact-card{
     background: var(--surface);
     border:1px solid var(--border);
@@ -409,6 +409,7 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
             <div class="hero-stat"><div class="hero-stat-value">1</div><div class="hero-stat-label">front controller, geen routes-bestand apart</div></div>
             <div class="hero-stat"><div class="hero-stat-value">7</div><div class="hero-stat-label">tabellen alleen al voor MailMind</div></div>
             <div class="hero-stat"><div class="hero-stat-value">0</div><div class="hero-stat-label">automated tests — verificatie via de app zelf</div></div>
+            <div class="hero-stat"><div class="hero-stat-value">2/18</div><div class="hero-stat-label">modules al op de nieuwe /api/v1-laag + redesign</div></div>
         </div>
 
         <div class="hero-diagram reveal">
@@ -480,7 +481,7 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
         <div class="section-head reveal">
             <div class="section-eyebrow">Waarom dit ontwerp werkt</div>
             <h2>Bewuste keuzes, geen toevalstreffers</h2>
-            <p>Drie architectuurbeslissingen die het meeste verschil maken in hoe dit systeem in de praktijk draait — nu en over twee jaar.</p>
+            <p>Vier architectuurbeslissingen die het meeste verschil maken in hoe dit systeem in de praktijk draait — nu en over twee jaar.</p>
         </div>
 
         <div class="impact-grid">
@@ -505,8 +506,16 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                 </div>
                 <h3>Draait waar het moet draaien</h3>
-                <p>Geen SSH? Geen probleem. <span class="mono">APP_GIT_PULL_ENABLED=false</span> schakelt alleen de shell-afhankelijke stap uit; schema's toepassen via phpMyAdmin blijft gewoon werken op Hostnet.</p>
+                <p>Geen SSH? Geen probleem. <span class="mono">APP_ENV=hostnet</span> schakelt dev-sync en git pull automatisch uit; schema's toepassen via phpMyAdmin blijft gewoon werken op Hostnet.</p>
                 <span class="tag">shared hosting-proof</span>
+            </div>
+            <div class="impact-card reveal">
+                <div class="impact-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 4.5v9L12 20l-9-4.5v-9z"/><path d="M12 11v9"/><path d="M3 6.5l9 4.5 9-4.5"/></svg>
+                </div>
+                <h3>Stap-voor-stap omgebouwd, geen big bang</h3>
+                <p>Een nieuwe 3-laags <span class="mono">/api/v1</span>-architectuur (Presentation → Service → Model) en een Lovable-gebaseerd redesign (emerald + donkere sidebar) worden module per module ingevoerd. Tickets en Kennisbank zijn live geverifieerd; 16 modules draaien nog bewust op het oude, server-rendered patroon totdat ze aan de beurt zijn.</p>
+                <span class="tag">App\Api\V1 · App\Modules\*Service</span>
             </div>
         </div>
     </section>
@@ -579,7 +588,7 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
                 </div>
                 <div class="spotlight-fact">
                     <div class="spotlight-fact-label">Fail-safe gedrag</div>
-                    <div class="spotlight-fact-value">Lege N8N_WEBHOOK_URL laat de e-mail op status <span class="mono">stored</span> staan voor de volgende cronrun — geen crash, geen dataverlies.</div>
+                    <div class="spotlight-fact-value">Lege N8N_WEBHOOK_URL laat de e-mail op status <span class="mono">failed</span> staan met een duidelijke reden in processing_logs — geen crash, geen dataverlies.</div>
                 </div>
                 <div class="spotlight-fact">
                     <div class="spotlight-fact-label">Nog open</div>
@@ -606,11 +615,14 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
                 <div class="roadmap-item"><p><strong>Agenda-teamoverzicht</strong> "in behandeling" via <span class="mono">GET /agenda/team-events</span>.</p></div>
                 <div class="roadmap-item"><p><strong>Tools herstart-mail</strong> export en verzending met cc/bcc-support in Mailer.</p></div>
                 <div class="roadmap-item"><p><strong>MailMind</strong> — alle 5 fases, smoke-getest tegen een lokale database.</p></div>
+                <div class="roadmap-item"><p><strong>/api/v1-laag + redesign</strong> voor Tickets én Kennisbank — live geverifieerd (lijst/filter/paginate, opmerkingen, status, urenregistratie zonder page reload; CSRF getest).</p></div>
+                <div class="roadmap-item"><p><strong>SOLID-review TicketService</strong> — DRY-fix via gedeelde <span class="mono">findOrFail()</span>-helper i.p.v. herhaalde find-of-404 + scope-check per methode.</p></div>
             </div>
 
             <div class="roadmap-card open reveal">
                 <h3>⚠ Open aandachtspunten</h3>
-                <div class="roadmap-item"><p><strong>N8N_WEBHOOK_URL</strong> is nog leeg — n8n-workflow moet gebouwd worden.</p></div>
+                <div class="roadmap-item"><p><strong>N8N_WEBHOOK_URL</strong> is nog leeg — n8n-workflow moet gebouwd worden; e-mails blijven tot die tijd op <span class="mono">failed</span> staan in processing_logs.</p></div>
+                <div class="roadmap-item"><p><strong>16 modules</strong> draaien nog op het oude server-rendered patroon — worden stap voor stap omgezet naar /api/v1 + redesign.</p></div>
                 <div class="roadmap-item"><p><strong>Categorie-zoekfunctie</strong> gebruikt ~200ms debounce i.p.v. de gewenste ~2s.</p></div>
                 <div class="roadmap-item"><p><strong>Geocoding/routing-API</strong> — nog geen keuze gemaakt, geen integratie bouwen zonder bewuste beslissing.</p></div>
             </div>
@@ -653,8 +665,7 @@ footer .foot-right{ font-family:var(--font-mono); font-size:11px; color: var(--t
                 </div>
                 <div class="terminal-body" style="line-height:1.7">
                     <div class="env-list" style="font-family:'IBM Plex Mono'">
-                        <div class="env-row"><span class="env-key">APP_DEV</span><span class="env-val">true = auto git-pull + db sync bij /login</span></div>
-                        <div class="env-row"><span class="env-key">APP_GIT_PULL_ENABLED</span><span class="env-val">apart uitschakelbaar (Hostnet: geen exec())</span></div>
+                        <div class="env-row"><span class="env-key">APP_ENV</span><span class="env-val">local = auto git-pull + db sync bij /login, hostnet = alles uit</span></div>
                         <div class="env-row"><span class="env-key">APP_ENCRYPTION_KEY</span><span class="env-val">identiek op elke omgeving — roteren breekt data</span></div>
                         <div class="env-row"><span class="env-key">N8N_WEBHOOK_URL</span><span class="env-val">leeg = analyse faalt veilig, geen crash</span></div>
                     </div>

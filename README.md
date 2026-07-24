@@ -64,8 +64,11 @@ De custom router (`app/Core/Router.php`) ondersteunt:
 
 Naast de server-rendered routes bouwt de app een JSON-API-laag op, 3 lagen dik: Presentation
 (`App\Api\V1\*Controller`, alleen HTTP in/uit), Service/Business (`App\Modules\<Module>\<Naam>Service`,
-validatie/autorisatie, geen HTTP-concepten) en Data Access (de bestaande `*Model`-classes). Tickets en
-Kennisbank zijn hierop overgezet; overige modules volgen stap voor stap. Zie CLAUDE.md voor het volledige
+validatie/autorisatie, geen HTTP-concepten) en Data Access (de bestaande `*Model`-classes). **Tickets**
+(referentiepatroon, live geverifieerd: lijst/filter/paginate, ticket openen, opmerking toevoegen, status
+wijzigen, tijd registreren — allemaal zonder page reload, CSRF getest) en **Kennisbank** (thin-shell
+views, split-view lijst+detail met pushState/popstate) zijn hierop overgezet; de overige 16 modules
+draaien nog op het oude server-rendered patroon en volgen stap voor stap. Zie CLAUDE.md voor het volledige
 patroon, de envelope-vorm en het "SOLID-review"-punt over de gedeelde `findOrFail()`-helper in
 `TicketService` (voorkomt dat elke methode zijn eigen find-of-404 + scope-check herhaalt).
 
@@ -124,8 +127,10 @@ Voer vervolgens `database/.parsed/schema.sql` uit.
 - `DB_DATABASE`
 - `DB_USERNAME`
 - `DB_PASSWORD`
-- `APP_DEV`
-- `APP_GIT_PULL_ENABLED`
+- `APP_ENV` — `local` of `hostnet`, kiest welk `LOCAL_*`/`HOSTNET_*`-blok in `.env` wordt gelezen en
+  bepaalt automatisch `dev`/`gitPullEnabled`/`display_errors` (zie "Omgevingsgedrag" hieronder) —
+  er zijn geen losse `APP_DEV`/`APP_GIT_PULL_ENABLED`/`APP_DEBUG`-sleutels meer, die zijn hierin
+  samengevoegd omdat ze in de praktijk altijd gelijk liepen met `APP_ENV`.
 - `APP_ENCRYPTION_KEY` — sleutel voor het versleutelen van gevoelige ticketvelden
   (`omschrijving`, `opdrachtgever_naam` — zie `App\Shared\Crypto\FieldEncryptor`). Genereer
   met `openssl rand -base64 32`; gebruik dezelfde sleutel op elke omgeving die dezelfde
@@ -160,9 +165,9 @@ powershell -ExecutionPolicy Bypass -File scripts\dev-tools\dev-tools.ps1
 php database/seed.php
 ```
 
-Demo-login:
-- E-mail: `admin@intranet.local`
-- Wachtwoord: `wachtwoord123`
+Demo-login (standaardwaarden uit `database/seed.php`, override via `SEED_USER_*` in `.env`):
+- E-mail: `timo@bergthaler.nl`
+- Wachtwoord: `demo123`
 
 ### 4) Applicatie starten
 
@@ -180,20 +185,20 @@ Ga naar: http://localhost:8000
 
 ## Omgevingsgedrag
 
-### `APP_DEV`
+### `APP_ENV`
 
-- `true`: bij `/login` wordt dev-sync uitgevoerd (git pull + DB parse/toepassen, afhankelijk van instellingen)
-- `false`: deze acties alleen handmatig via Beheer
+Eén sleutel bepaalt het gedrag per omgeving — er is geen aparte `APP_DEV`/`APP_GIT_PULL_ENABLED` meer:
 
-### `APP_GIT_PULL_ENABLED`
-
-- `true`: git pull-acties toegestaan (omgevingen met shell-toegang)
-- `false`: git pull uitgeschakeld, database parsen blijft beschikbaar
+- `local` (of elke andere waarde dan `hostnet`) telt als dev-omgeving: bij `/login` wordt dev-sync
+  uitgevoerd (git pull + DB parse/toepassen), git pull-acties zijn toegestaan, en PHP-fouten worden
+  getoond (`display_errors`).
+- `hostnet`: dev-sync, git pull en `display_errors` staan alle drie uit; database parsen/toepassen
+  blijft wel handmatig beschikbaar via Beheer.
 
 ## Deployen (Hostnet / shared hosting)
 
 Voor shared hosting zonder SSH:
-- zet `APP_DEV=false` en `APP_GIT_PULL_ENABLED=false`;
+- zet `APP_ENV=hostnet`;
 - upload via SFTP/FTP;
 - configureer DB-gegevens via `.env`;
 - voer schema uit via phpMyAdmin;
@@ -204,8 +209,24 @@ Voor shared hosting zonder SSH:
 
 - Gebruik HTTPS in alle niet-lokale omgevingen.
 - Gebruik sterke wachtwoorden voor productiegebruikers.
-- Laat `APP_DEV` in productie uit staan.
+- Zet `APP_ENV=hostnet` in productie (schakelt dev-sync, git pull en `display_errors` in één keer uit).
 - Schakel git pull alleen in waar shell-toegang en juiste repo-rechten aanwezig zijn.
+
+## Huidige status / openstaande punten
+
+- **API-laag + redesign per module**: Tickets en Kennisbank draaien op de nieuwe `/api/v1`-laag met
+  bijbehorend Lovable-gebaseerd redesign (emerald + altijd-donkere sidebar, Inter/JetBrains Mono); de
+  overige 16 modules staan nog op het oude server-rendered patroon en worden één voor één omgezet (zie
+  "API-laag" hierboven en het rolloutplan in `CLAUDE.md`).
+- **MailMind (`app/Modules/EmailVerwerking`)**: alle 5 fases zijn opgeleverd en lokaal smoke-getest.
+  Grootste openstaande blocker: `N8N_WEBHOOK_URL` is nergens ingevuld, dus elke inkomende e-mail blijft
+  hangen op status `failed` in `processing_logs` (fail-safe, geen crash) totdat de n8n-workflow zelf is
+  gebouwd en geconfigureerd.
+- **Categorie-zoekfunctie** (Ticket/Kennisbank/Verbeterpunt) gebruikt momenteel een debounce van ~200ms
+  in plaats van de gewenste ~2s — verhogen als dit tijdens typen te veel requests oplevert.
+- **Geocoding/routing-API** (OpenCage voor adres → coördinaten, ANWB routing voor reistijd/afstand) is
+  alleen verkend voor een eventuele reistijd-indicatie bij Urenstaat/locaties — nog geen keuze gemaakt,
+  geen integratie bouwen totdat hier bewust voor gekozen wordt.
 
 ## Licentie
 
