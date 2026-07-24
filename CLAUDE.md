@@ -334,9 +334,22 @@ bron `src/routes/modules.verbeterpunt.tsx` / `modules.reflectie.tsx` via de Lova
     niet voor in de mockup (alleen titel+inhoud inline bewerken) — dus ook niet meegenomen in
     `reflecties-index.js`; de oude `/reflecties/{id}/log`-route blijft bestaan maar wordt door dit
     scherm niet meer aangeroepen.
-- Lokaal geverifieerd: `php -l` schoon, server boot zonder fatale fouten op alle nieuwe HTML- en
-  API-routes (302 resp. 401 zoals verwacht zonder sessie). Volledige ingelogde klik-door-test nog te
-  doen door QA (zelfde beperking als bij Kennisbank hierboven).
+- Lokaal geverifieerd door QA (2026-07-24, XAMPP `php.exe` met openssl, lokale DB + seed-gebruiker):
+  `php -l` schoon op alle betrokken bestanden; `GET /api/v1/verbeterpunten` en `/api/v1/reflecties`
+  geven zonder sessie een nette `401`-envelope (geen fatal error); met een ingelogde sessie geven
+  beide `200` met de juiste envelope-vorm (`status/data/meta`, incl. `meta.statusCounts` bij
+  Verbeterpunt); detail-endpoints (`GET .../{id}`) en een niet-bestaand id (`404` met foutmelding)
+  getest; `POST .../log` (Verbeterpunt) doorlopen via de UI-flow-code. Alle status-badgeklassen
+  (`badge-nieuw`, `badge-in_overweging`, `badge-goedgekeurd`, `badge-afgewezen`, `badge-uitgevoerd`)
+  bestaan in `app.css` en hergebruiken de gedeelde statuskleuren, geen losse per-module kleuren.
+  `/verbeterpunten/create`, `/reflecties/create` en de bijbehorende lijst-/detailpagina's laden
+  allemaal `200`.
+- **Extra bevinding QA:** Reflectie's mockup (`modules.reflectie.tsx`) heeft een decoratieve
+  hero-kaart bovenaan ("Wat viel op deze week?" + toelichtingstekst + de "Nieuwe reflectie"-knop
+  erin) — `reflecties-index.js` laat deze kaart volledig weg (de knop staat wel, maar los in de
+  page-header). Dit is geen "verzonnen data/nep-knop"-overtreding van de Uitvoeringsregel (de kaart
+  bevat geen data, puur uitleg), dus geen [BESLISSING NODIG]-taak, maar wel een 1-op-1-layoutgat dat
+  nog niet was genoteerd — op te pakken bij een volgende polish-pas op deze module.
 - **Nog niet meegenomen:** `/verbeterpunten/create`/`/{id}/edit` en `/reflecties/create`/`/{id}/edit`
   staan nog op de oude server-rendered formulieren.
 
