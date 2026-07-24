@@ -4,6 +4,7 @@
 /** @var array $verbeterpunten */
 /** @var int $huidigeGebruikerId */
 /** @var array $types */
+/** @var array $teamVandaag */
 
 $flashSuccess = $_SESSION['flash_success'] ?? null;
 $flashError = $_SESSION['flash_error'] ?? null;
@@ -34,8 +35,43 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
   <div class="alert alert-error"><?= htmlspecialchars($flashError) ?></div>
 <?php endif; ?>
 
-<div class="card" style="padding:16px">
-  <div id="agenda-calendar"></div>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start">
+  <div class="card" style="padding:16px">
+    <div id="agenda-calendar"></div>
+  </div>
+
+  <div>
+    <div class="card" style="padding:16px;margin-bottom:16px">
+      <h3 class="detail-side-heading"><i class="bi bi-people" style="margin-right:6px"></i>Team vandaag</h3>
+      <?php if (empty($teamVandaag)): ?>
+        <div class="empty-state" style="padding:12px 0">Geen actieve medewerkers met login.</div>
+      <?php else: ?>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+          <?php foreach ($teamVandaag as $m): ?>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+              <span class="avatar-xs" style="width:26px;height:26px;font-size:10px"><?= htmlspecialchars(mb_strtoupper(mb_substr($m['voornaam'], 0, 1) . mb_substr($m['achternaam'], 0, 1))) ?></span>
+              <div style="min-width:0;flex:1">
+                <div class="text-truncate" style="font-weight:500"><?= htmlspecialchars($m['voornaam'] . ' ' . $m['achternaam']) ?></div>
+                <div class="text-truncate" style="font-size:10.5px;color:var(--color-text-tertiary)"><?= htmlspecialchars($m['functie'] ?? '—') ?></div>
+              </div>
+              <?php if ((int) $m['in_behandeling'] > 0): ?>
+                <span class="mono" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--color-status-behandeling-bg);color:var(--color-status-behandeling)"><?= (int) $m['in_behandeling'] ?></span>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <div class="card" style="padding:16px">
+      <h3 class="detail-side-heading"><i class="bi bi-calendar3" style="margin-right:6px"></i>Legenda</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;font-size:12.5px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;background:#e2a94a"></span> Ticket</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;background:#7ecb57"></span> Verbeterpunt</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;background:#378ADD"></span> Afspraak</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="modal fade" id="agendaModal" tabindex="-1" aria-hidden="true">
