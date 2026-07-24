@@ -236,6 +236,11 @@ $router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
 $router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
 $router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
 
+$router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class, 'index']);
+$router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
+$router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
+
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
 $router->post('/verbeterpunten/{id}/log', [VerbeterpuntLogController::class, 'store']);
