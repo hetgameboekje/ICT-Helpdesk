@@ -1,10 +1,17 @@
 import { api, ApiError } from '/assets/js/api/client.js';
+import { sortableHeaderHtml, bindSortableHeaders } from '/assets/js/table-sort.js';
 
 /**
  * Tickets-lijst, volledig client-side gerenderd via /api/v1/tickets. Vervangt de eerdere
  * server-rendered app/Modules/Ticket/Views/TicketView/index.php-inhoud (zie CLAUDE.md >
  * API-architectuur). Export/Import (Excel) blijven bewust op de oude server-rendered routes
  * (/tickets/export, /tickets/import) — bestandsdownload/-upload hoort niet in deze JSON-API-scope.
+ *
+ * Kolommen (Nummer/Onderwerp/Melder/Behandelaar/Categorie/Prio/Status/Bijgewerkt) volgen 1-op-1
+ * src/routes/tickets.index.tsx (Lovable MCP read_file, project 4675b36f-276e-4fc5-9606-d83a98f9d801).
+ * De subtitel onder Onderwerp toont daar "kanaal · afdeling" — "kanaal" bestaat niet in het
+ * datamodel (zie CLAUDE.md, "Ticket-detail — Kanaal"), dus hier alleen de afdeling. Klikbaar
+ * sorteren op de kolomkoppen is geen onderdeel van de mockup — zie public/assets/js/table-sort.js.
  */
 
 const STATUS_LABELS = {
@@ -113,6 +120,10 @@ function renderShell() {
     document.getElementById('filtersToggleBtn').addEventListener('click', () => {
         document.getElementById('filtersPanel').classList.toggle('open');
     });
+
+    bindSortableHeaders(document.getElementById('ticketsCardBody'), (column, dir) => {
+        navigate(buildUrl({ sort: column, dir, page: null }));
+    });
 }
 
 function navigate(url) {
@@ -188,6 +199,11 @@ function renderTable(items, pagination) {
         return;
     }
 
+    const params = getParams();
+    const currentSort = params.get('sort');
+    const currentDir = params.get('dir') || 'asc';
+    const th = (column, label, cls) => `<th${cls ? ` class="${cls}"` : ''}>${sortableHeaderHtml(column, label, currentSort, currentDir)}</th>`;
+
     const rows = items.map((t) => {
         const behandelaar = t.behandelaar_naam
             ? `<span style="display:flex;align-items:center;gap:6px"><span class="avatar-xs">${esc(initialen(t.behandelaar_naam))}</span>${esc(t.behandelaar_naam.split(' ')[0])}</span>`
@@ -197,13 +213,14 @@ function renderTable(items, pagination) {
                 <td class="col-1"><span class="mono" style="color:var(--color-text-tertiary)">#${t.id}</span></td>
                 <td>
                     <span class="text-truncate d-block" title="${esc(t.titel)}">${esc(t.titel)}</span>
-                    <span class="text-truncate d-block" style="font-size:11px;color:var(--color-text-tertiary)">${esc(t.opdrachtgever_naam)}</span>
+                    <span class="text-truncate d-block" style="font-size:11px;color:var(--color-text-tertiary)">${esc(t.afdeling_naam || '—')}</span>
                 </td>
-                <td class="col-2"><span class="text-truncate d-block" title="${esc(t.afdeling_naam || '')}">${esc(t.afdeling_naam || '—')}</span></td>
+                <td class="col-2"><span class="text-truncate d-block" title="${esc(t.opdrachtgever_naam || '')}">${esc(t.opdrachtgever_naam || '—')}</span></td>
                 <td class="col-2">${behandelaar}</td>
+                <td class="col-2"><span class="text-truncate d-block" style="color:var(--color-text-tertiary)">${esc(t.categorie || '—')}</span></td>
                 <td class="col-1">${prioBadge(t.prioriteit)}</td>
                 <td class="col-2">${statusBadge(t.status)}</td>
-                <td class="col-2"><span style="color:var(--color-text-tertiary)">${formatDatum(t.deadline)}</span></td>
+                <td class="col-2" style="text-align:right"><span style="color:var(--color-text-tertiary)">${formatDatum(t.updated_at)}</span></td>
             </tr>`;
     }).join('');
 
@@ -211,8 +228,9 @@ function renderTable(items, pagination) {
         <div class="table-wrap">
             <table>
                 <thead><tr>
-                    <th class="col-1">#</th><th>Taak</th><th class="col-2">Afdeling</th>
-                    <th class="col-2">Behandelaar</th><th class="col-1">Prio</th><th class="col-2">Status</th><th class="col-2">Deadline</th>
+                    ${th('id', 'Nummer', 'col-1')}${th('titel', 'Onderwerp')}${th('opdrachtgever_naam', 'Melder', 'col-2')}
+                    ${th('behandelaar_naam', 'Behandelaar', 'col-2')}${th('categorie', 'Categorie', 'col-2')}${th('prioriteit', 'Prio', 'col-1')}
+                    ${th('status', 'Status', 'col-2')}<th class="col-2" style="text-align:right">${sortableHeaderHtml('updated_at', 'Bijgewerkt', currentSort, currentDir)}</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>

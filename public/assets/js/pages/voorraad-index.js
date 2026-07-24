@@ -1,4 +1,5 @@
 import { api, ApiError } from '/assets/js/api/client.js';
+import { sortableHeaderHtml, bindSortableHeaders } from '/assets/js/table-sort.js';
 
 /**
  * Voorraad: lijst + detail in één split-view scherm, o.b.v. src/routes/modules.voorraad.tsx
@@ -17,6 +18,9 @@ import { api, ApiError } from '/assets/js/api/client.js';
  * - "Nieuw artikel"/"Scan" linken door naar de bestaande server-rendered formulieren
  *   (/voorraad/create met DxDiag-upload en serienummer-batches) — dat blijft buiten deze
  *   JSON-API-scope, net als tickets-import/export.
+ *
+ * Klikbaar sorteren op de kolomkoppen (Artikel/Status/Locatie) is geen onderdeel van de mockup —
+ * zie public/assets/js/table-sort.js voor de onderbouwing van die bewuste uitbreiding.
  */
 
 function esc(value) {
@@ -66,7 +70,7 @@ function renderShell() {
         <div style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start">
             <div class="card" style="padding:0;overflow:hidden">
                 <div class="table-wrap"><table>
-                    <thead><tr><th>Artikel</th><th class="col-2">Status</th><th class="col-2">Locatie</th></tr></thead>
+                    <thead id="vrThead"></thead>
                     <tbody id="vrListBody"></tbody>
                 </table></div>
             </div>
@@ -89,6 +93,25 @@ function renderShell() {
         window.history.replaceState({}, '', '/voorraad' + (params.toString() ? `?${params}` : ''));
         load();
     });
+
+    bindSortableHeaders(document.getElementById('vrThead'), (column, dir) => {
+        const params = getParams();
+        params.set('sort', column);
+        params.set('dir', dir);
+        window.history.replaceState({}, '', '/voorraad' + (params.toString() ? `?${params}` : ''));
+        load();
+    });
+}
+
+function renderTableHead() {
+    const params = getParams();
+    const currentSort = params.get('sort');
+    const currentDir = params.get('dir') || 'asc';
+    document.getElementById('vrThead').innerHTML = `<tr>
+        <th>${sortableHeaderHtml('type_naam', 'Artikel', currentSort, currentDir)}</th>
+        <th class="col-2">${sortableHeaderHtml('status', 'Status', currentSort, currentDir)}</th>
+        <th class="col-2">${sortableHeaderHtml('locatie', 'Locatie', currentSort, currentDir)}</th>
+    </tr>`;
 }
 
 function debounce(fn, ms) {
@@ -237,6 +260,7 @@ async function load() {
     if (!document.getElementById('vrListBody')) {
         renderShell();
     }
+    renderTableHead();
     document.getElementById('vrListBody').innerHTML = '<tr><td colspan="3" class="empty-state">Laden&hellip;</td></tr>';
 
     try {

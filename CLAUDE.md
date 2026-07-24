@@ -94,6 +94,25 @@ colors; data tables with muted uppercase headers and row hover; split-view detai
 timeline/log + related records); risk-matrix component for CyberRisico; terminal-style code blocks
 for scripts/commands.
 
+**Klikbaar sorteren op tabelkoppen — bewuste uitbreiding bovenop de mockup (2026-07-25):** de
+Lovable-mockup zelf heeft nergens klikbaar sorteren (geverifieerd via Lovable MCP `read_file` tegen
+zowel `src/routes/tickets.index.tsx` als `src/routes/modules.voorraad.tsx` — platte `<th>`, geen
+`onClick`/sorteericoon). Dit is dus geen 1-op-1-conversie maar een eigen toevoeging bovenop de
+mockup, op uitdrukkelijk verzoek. Geïmplementeerd als één herbruikbare helper,
+`public/assets/js/table-sort.js` (`sortableHeaderHtml()` + `bindSortableHeaders()`), die bewust
+dezelfde `.th-sort`/`.sort-arrow`-CSS-klassen hergebruikt als de al bestaande server-rendered
+`sortLink()`-helper (`app/Views/partials/ticket-helpers.php`) — zodat het patroon er identiek
+uitziet op modules die nog niet naar de JSON-API zijn overgezet. Backend-ondersteuning loopt via de
+generieke `sort`/`dir`-querystring die `App\Core\TableQuery::apply()` al afhandelt voor elk
+lijst-endpoint dat `TableQuery` gebruikt; alleen kolommen die corresponderen met een echte
+databasekolom (geen client-side-only afgeleide waarden) zijn sorteerbaar gemaakt.
+Toegepast op: Tickets (`tickets-index.js`, kolommen Nummer/Onderwerp/Melder/Behandelaar/Categorie/
+Status/Bijgewerkt) en Voorraad (`voorraad-index.js`, kolommen Artikel/Status/Locatie).
+**Vervolgstap (nog niet gedaan):** hetzelfde patroon toepassen op de overige al-naar-JSON-API-
+geconverteerde modules zodra die client-side lijst-pagina's krijgen (momenteel alleen Kennisbank,
+zie hierboven); voor de nog server-rendered modules (Verbeterpunt, Reflectie, Device, Printer,
+CyberRisico, Uitgifte) bestaat de PHP-variant van dit patroon al via `sortLink()`.
+
 **Rollout plan (see the plan file above for full detail; step by step, verify manually after each
 since there's no test suite):**
 0. ✅ Done — tokens/typography replaced in `public/assets/css/app.css`, fonts swapped in both layouts.
