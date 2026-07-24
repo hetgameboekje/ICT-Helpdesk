@@ -154,6 +154,63 @@ voor een vervolgprompt in Lovable om de UX daadwerkelijk uit te werken, waarna d
   om dit alsnog te bouwen, maar bewust niet meegenomen in deze fase (grotere JS/UX-wijziging dan een
   visuele restyle).
 
+## API-architectuur (nieuw, 2026-07-24 — Tickets is het referentiepatroon)
+
+Naast de bestaande server-rendered routes wordt de app stap voor stap omgebouwd naar een 3-laags
+architectuur met een JSON-API-laag, zodat frontend en backend ontkoppeld zijn. **Tickets is het
+eerste en tot nu toe enige module dat dit patroon volledig heeft** — de overige 17 modules draaien
+nog volledig op het oude server-rendered patroon (zie "Frontend design direction" hierboven) totdat
+dit patroon is gevalideerd en er bewust voor gekozen wordt het per module over te zetten.
+
+**Waarom geen React/TanStack Start in productie:** het gedownloade Lovable-project (broncode ter
+referentie gecommit onder `docs/design/`) gebruikt `@tanstack/react-start` + Nitro met een privé
+Lovable-buildplugin die standaard op Cloudflare target — een Node/edge-runtime toolchain die niet op
+Hostnet (shared hosting, geen SSH, geen Node) kan draaien. De frontend is daarom in Bootstrap +
+vanilla JS gebouwd, met dezelfde CSS/HTML-taal als de rest van de app (`public/assets/css/app.css`).
+De React-broncode blijft wel het visuele/structurele referentiepunt.
+
+**Drie lagen:**
+1. **Presentation/API** — `App\Api\V1\*Controller` (bv. `TicketsApiController`, extends
+   `App\Api\V1\ApiController`). Parsed de request, roept de service aan, zet het resultaat om in de
+   envelope hieronder. Geen businesslogica.
+2. **Service/Business** — `App\Modules\<Module>\<Naam>Service` (bv. `TicketService`). Alle validatie,
+   scope-autorisatie, statusovergangs-logica. Geen HTTP-concepten. Gooit
+   `App\Core\Exceptions\{ValidationException,NotFoundException,ForbiddenException}` die de API-laag
+   naar de juiste HTTP-status vertaalt.
+3. **Data Access/Repository** — de bestaande `*Model`-klassen (bv. `TicketModel`, extends
+   `App\Core\Model`). Kenden al geen HTTP-/UI-concepten, dus dit is niet herschreven — de Service-laag
+   roept ze aan i.p.v. de oude Controller.
+
+**Routes**: `/api/v1/...` in `public/index.php`, zelfde `Router`/front controller als de
+server-rendered routes. Let op: `App\Core\Router::dispatch()` stelt alle `/api/*`-paden standaard
+vrij van CSRF-verificatie (bedoeld voor de bestaande machine-to-machine endpoints met een
+API-sleutel, zie `App\Shared\ApiKey`) — de nieuwe sessie-geauthenticeerde `/api/v1/*`-routes
+controleren CSRF daarom zelf, via `ApiController::requireCsrf()`.
+
+**Auth**: dezelfde sessiecookie als de server-rendered routes (same-origin op Hostnet, geen apart
+tokensysteem). `ApiController::requireAuth()` geeft `401` JSON i.p.v. een redirect.
+
+**Envelope**: succes `{"status":"success","data":...,"meta":{...}}` (meta bevat o.a. `pagination`,
+`statusCounts`, `filterOptions` bij lijst-endpoints); fout `{"status":"error","message":"...",
+"errors":{"veld":["..."]}}`. Statuscodes: 200/201/204/401/403/404/422/419 (CSRF).
+
+**Frontend**: `app/Modules/Ticket/Views/TicketView/{index,show}.php` zijn nu lege shells (layout +
+een leeg `<div id="...">` + één `<script type="module">`). `public/assets/js/api/client.js` is de
+gedeelde fetch-wrapper (CSRF-header wordt al automatisch toegevoegd door het bestaande
+`public/assets/js/csrf.js`, dat monkey-patcht `window.fetch` — de client hoeft dat dus niet zelf te
+doen). `public/assets/js/pages/tickets-index.js` / `tickets-show.js` bevatten per pagina de
+render-/state-logica (loading/empty/error-states, URL-querystring als filterstate). Export/import
+(Excel) op de tickets-lijst blijven bewust op de oude server-rendered routes
+(`/tickets/export`, `/tickets/import`) — bestandsdownload/-upload hoort niet in deze JSON-API-scope.
+
+**Live geverifieerd** (lokale DB, browser): lijst laden/filteren/pagineren, ticket openen, opmerking
+toevoegen, status wijzigen (incl. tijdlijn-update), tijd registreren — allemaal via de nieuwe API,
+zonder page reload. CSRF-check getest (419 zonder token, 201 met), 401/404/422 getest via curl.
+
+**Vervolg**: zodra dit patroon is goedgekeurd, kan het per module herhaald worden (Service + API-
+controller + JS-pagina + shell-view). De oude server-rendered routes per module blijven intact totdat
+die module is overgezet — geen big-bang-migratie.
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

@@ -2,6 +2,7 @@
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Api\V1\TicketsApiController;
 use App\Core\Router;
 use App\Modules\Account\AccountController;
 use App\Modules\Agenda\AgendaController;
@@ -150,6 +151,20 @@ $router->get('/tickets/export', [TicketController::class, 'export']);
 $router->post('/tickets/import', [TicketController::class, 'import']);
 $router->get('/tickets/categorieen', [TicketController::class, 'categorieen']);
 $router->post('/tickets/{id}/tijd', [TicketTijdController::class, 'store']);
+
+// JSON-API v1 (referentiepatroon: 3-laags architectuur, zie CLAUDE.md > API-architectuur).
+// Zelfde sessie-auth als de routes hierboven; CSRF wordt binnen TicketsApiController zelf
+// gecontroleerd omdat Router alle /api/*-paden standaard vrijstelt (bedoeld voor de bestaande
+// machine-to-machine endpoints met API-sleutel, zie App\Shared\ApiKey).
+$router->get('/api/v1/tickets', [TicketsApiController::class, 'index']);
+$router->post('/api/v1/tickets', [TicketsApiController::class, 'store']);
+$router->get('/api/v1/tickets/{id}', [TicketsApiController::class, 'show']);
+$router->add('PUT', '/api/v1/tickets/{id}', [TicketsApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/tickets/{id}', [TicketsApiController::class, 'destroy']);
+$router->post('/api/v1/tickets/{id}/log', [TicketsApiController::class, 'addLog']);
+$router->post('/api/v1/tickets/{id}/tijd', [TicketsApiController::class, 'addTijd']);
+$router->post('/api/v1/tickets/{id}/kennisbank/{id}', [TicketsApiController::class, 'kennisbankKoppel']);
+$router->add('DELETE', '/api/v1/tickets/{id}/kennisbank/{id}', [TicketsApiController::class, 'kennisbankOntkoppel']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
