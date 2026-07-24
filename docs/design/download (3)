@@ -1,0 +1,160 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Topbar } from "@/components/topbar";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { voorraadItems } from "@/lib/mock-data";
+import { Boxes, Search, Plus, ScanBarcode, AlertTriangle, PackageCheck, TrendingDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/modules/voorraad")({
+  head: () => ({
+    meta: [
+      { title: "Voorraad — Leen van Punt Intranet" },
+      { name: "description", content: "Voorraadbeheer met barcode-ondersteuning en 'onder minimum'-signalering." },
+      { property: "og:title", content: "Voorraad — Leen van Punt Intranet" },
+      { property: "og:description", content: "Voorraadbeheer met barcode-ondersteuning en 'onder minimum'-signalering." },
+    ],
+  }),
+  component: Voorraad,
+});
+
+function Voorraad() {
+  const [q, setQ] = useState("");
+  const [selId, setSelId] = useState(voorraadItems[0].id);
+  const filtered = useMemo(() => voorraadItems.filter((v) => q === "" || v.naam.toLowerCase().includes(q.toLowerCase()) || v.barcode.includes(q)), [q]);
+  const sel = voorraadItems.find((v) => v.id === selId) ?? filtered[0];
+
+  const onderMin = voorraadItems.filter((v) => v.aantal < v.minimum).length;
+  const kpis = [
+    { label: "Artikelen", value: voorraadItems.length, icon: Boxes, tone: "open" },
+    { label: "Onder minimum", value: onderMin, icon: AlertTriangle, tone: "wachtend" },
+    { label: "Totaal stuks", value: voorraadItems.reduce((s, v) => s + v.aantal, 0), icon: PackageCheck, tone: "opgelost" },
+    { label: "Uit voorraad", value: voorraadItems.filter((v) => v.aantal === 0).length, icon: TrendingDown, tone: "behandeling" },
+  ];
+
+  return (
+    <>
+      <Topbar title="Voorraad" breadcrumbs={["Assets & Beheer"]} />
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {kpis.map((k) => {
+            const Icon = k.icon;
+            return (
+              <Card key={k.label} className="p-4 gap-2">
+                <div className="flex items-start justify-between">
+                  <div className="text-xs font-medium text-muted-foreground">{k.label}</div>
+                  <div className="grid place-items-center h-7 w-7 rounded-md" style={{ backgroundColor: `var(--status-${k.tone}-bg)`, color: `var(--status-${k.tone})` }}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <div className="text-3xl font-semibold tracking-tight tabular-nums">{k.value}</div>
+              </Card>
+            );
+          })}
+        </section>
+
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek op naam of barcode…" className="pl-9 h-9" />
+          </div>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5"><ScanBarcode className="h-3.5 w-3.5" /> Scan</Button>
+          <Button size="sm" className="h-9 gap-1.5"><Plus className="h-3.5 w-3.5" /> Nieuw artikel</Button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4">
+          <Card className="p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/40">
+                    <th className="text-left font-semibold px-4 py-2.5">Artikel</th>
+                    <th className="text-left font-semibold px-2 py-2.5 w-32">Categorie</th>
+                    <th className="text-left font-semibold px-2 py-2.5 w-56">Voorraad</th>
+                    <th className="text-left font-semibold px-2 py-2.5 w-40">Locatie</th>
+                    <th className="text-right font-semibold px-4 py-2.5 w-24">Mutatie</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((v) => {
+                    const low = v.aantal < v.minimum;
+                    const pct = Math.min(100, Math.round((v.aantal / Math.max(v.minimum * 2, 1)) * 100));
+                    return (
+                      <tr
+                        key={v.id}
+                        onClick={() => setSelId(v.id)}
+                        className={cn("cursor-pointer hover:bg-muted/40", sel?.id === v.id && "bg-muted/60")}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <ScanBarcode className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="font-mono text-[10px] text-muted-foreground">{v.barcode}</span>
+                          </div>
+                          <div className="text-sm font-medium mt-0.5">{v.naam}</div>
+                        </td>
+                        <td className="px-2 py-3 text-xs text-muted-foreground">{v.categorie}</td>
+                        <td className="px-2 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${pct}%`, backgroundColor: low ? "var(--stock-low)" : "var(--stock-ok)" }}
+                              />
+                            </div>
+                            <span className="text-xs tabular-nums font-medium w-14 text-right">
+                              {v.aantal}<span className="text-muted-foreground">/{v.minimum}</span>
+                            </span>
+                          </div>
+                          {low && (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-stock-low-bg text-stock-low">
+                              <AlertTriangle className="h-2.5 w-2.5" /> onder minimum
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-3 text-xs text-muted-foreground">{v.locatie}</td>
+                        <td className="px-4 py-3 text-right text-[11px] text-muted-foreground">{v.laatstMutatie}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {sel && (
+            <Card className="p-5 space-y-4">
+              <div>
+                <div className="font-mono text-[10px] text-muted-foreground">{sel.barcode}</div>
+                <div className="text-base font-semibold mt-0.5">{sel.naam}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{sel.categorie} · {sel.locatie}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" className="w-full">Bijboeken</Button>
+                <Button size="sm" variant="outline" className="w-full">Afboeken</Button>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Mutatiehistorie</h3>
+                <ul className="space-y-2 text-sm">
+                  {[
+                    { d: "22 jul", w: "Mila", a: `−1 · uitgifte aan Ravi Sharma` },
+                    { d: "18 jul", w: "Jeroen", a: `+5 · levering leverancier XL-Tech` },
+                    { d: "12 jul", w: "Mila", a: `−2 · uitgifte aan Bram Kooistra` },
+                    { d: "5 jul", w: "Mila", a: `−1 · retour → reparatie` },
+                    { d: "1 jul", w: "Systeem", a: `Minimum aangepast: 4 → ${sel.minimum}` },
+                  ].map((h, i) => (
+                    <li key={i} className="flex items-start gap-2 text-muted-foreground">
+                      <span className="font-mono text-[10px] w-12 shrink-0 pt-0.5">{h.d}</span>
+                      <div className="min-w-0"><span className="text-foreground font-medium">{h.w}</span> · {h.a}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

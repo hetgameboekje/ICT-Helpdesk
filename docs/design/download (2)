@@ -1,0 +1,166 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Topbar } from "@/components/topbar";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { verbeterpunten, verbeterStatusLabels, type VerbeterStatus } from "@/lib/mock-data";
+import { Lightbulb, Search, Plus, TrendingUp, CheckCircle2, Clock } from "lucide-react";
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/modules/verbeterpunt")({
+  head: () => ({
+    meta: [
+      { title: "Verbeterpunten — Leen van Punt Intranet" },
+      { name: "description", content: "Verbetertrajecten met eigen status-flow: voorgesteld → in uitvoering → afgerond." },
+      { property: "og:title", content: "Verbeterpunten — Leen van Punt Intranet" },
+      { property: "og:description", content: "Verbetertrajecten met eigen status-flow: voorgesteld → in uitvoering → afgerond." },
+    ],
+  }),
+  component: VerbeterpuntPage,
+});
+
+const flowStyle: Record<VerbeterStatus, { bg: string; fg: string }> = {
+  voorgesteld: { bg: "var(--status-open-bg)", fg: "var(--status-open)" },
+  "in-uitvoering": { bg: "var(--status-behandeling-bg)", fg: "var(--status-behandeling)" },
+  afgerond: { bg: "var(--status-opgelost-bg)", fg: "var(--status-opgelost)" },
+};
+
+function VerbeterpuntPage() {
+  const [q, setQ] = useState("");
+  const [selId, setSelId] = useState(verbeterpunten[0].id);
+  const filtered = useMemo(() => verbeterpunten.filter((v) => q === "" || v.titel.toLowerCase().includes(q.toLowerCase())), [q]);
+  const sel = verbeterpunten.find((v) => v.id === selId) ?? filtered[0];
+
+  const kpis = [
+    { label: "Voorgesteld", value: verbeterpunten.filter((v) => v.status === "voorgesteld").length, icon: Lightbulb, tone: "open" },
+    { label: "In uitvoering", value: verbeterpunten.filter((v) => v.status === "in-uitvoering").length, icon: TrendingUp, tone: "behandeling" },
+    { label: "Afgerond dit kwartaal", value: verbeterpunten.filter((v) => v.status === "afgerond").length, icon: CheckCircle2, tone: "opgelost" },
+    { label: "Gem. doorlooptijd", value: "18d", icon: Clock, tone: "wachtend" },
+  ];
+
+  return (
+    <>
+      <Topbar title="Verbeterpunten" breadcrumbs={["Support"]} />
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {kpis.map((k) => {
+            const Icon = k.icon;
+            return (
+              <Card key={k.label} className="p-4 gap-2">
+                <div className="flex items-start justify-between">
+                  <div className="text-xs font-medium text-muted-foreground">{k.label}</div>
+                  <div className="grid place-items-center h-7 w-7 rounded-md" style={{ backgroundColor: `var(--status-${k.tone}-bg)`, color: `var(--status-${k.tone})` }}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <div className="text-3xl font-semibold tracking-tight tabular-nums">{k.value}</div>
+              </Card>
+            );
+          })}
+        </section>
+
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek verbeterpunt…" className="pl-9 h-9" />
+          </div>
+          <Button size="sm" className="h-9 gap-1.5"><Plus className="h-3.5 w-3.5" /> Nieuw</Button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_1fr] gap-4">
+          <Card className="p-0 overflow-hidden">
+            <div className="divide-y divide-border">
+              {filtered.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setSelId(v.id)}
+                  className={cn("w-full text-left px-4 py-3 hover:bg-muted/40 transition-colors", sel?.id === v.id && "bg-muted/60")}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-muted-foreground">{v.id}</span>
+                    <VerbeterBadge status={v.status} />
+                  </div>
+                  <div className="text-sm font-medium mt-1 line-clamp-1">{v.titel}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {v.eigenaar} · impact <span className="capitalize">{v.impact}</span> · {v.aangemaakt}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {sel && (
+            <Card className="p-6 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[11px] text-muted-foreground">{sel.id}</span>
+                  <VerbeterBadge status={sel.status} />
+                </div>
+                <h2 className="text-xl font-semibold tracking-tight">{sel.titel}</h2>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{sel.beschrijving}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {(["voorgesteld", "in-uitvoering", "afgerond"] as VerbeterStatus[]).map((s, i, arr) => {
+                  const currentIdx = arr.indexOf(sel.status);
+                  const done = i <= currentIdx;
+                  return (
+                    <div key={s} className="flex flex-col items-center gap-2">
+                      <div
+                        className={cn("h-9 w-full rounded-md flex items-center justify-center text-xs font-medium", done ? "text-white" : "bg-muted text-muted-foreground")}
+                        style={done ? { backgroundColor: flowStyle[s].fg } : undefined}
+                      >
+                        {verbeterStatusLabels[s]}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <Field label="Indiener" value={sel.indiener} />
+                <Field label="Eigenaar" value={sel.eigenaar} />
+                <Field label="Impact" value={sel.impact} />
+                <Field label="Aangemaakt" value={sel.aangemaakt} />
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Logboek</h3>
+                <ul className="space-y-2 text-sm">
+                  <li className="text-muted-foreground"><span className="font-mono text-[10px] mr-2">14 jul</span> {sel.indiener} maakte het verbeterpunt aan.</li>
+                  <li className="text-muted-foreground"><span className="font-mono text-[10px] mr-2">16 jul</span> Mila kende het toe aan {sel.eigenaar}.</li>
+                  <li className="text-muted-foreground"><span className="font-mono text-[10px] mr-2">18 jul</span> Status → <em>{verbeterStatusLabels[sel.status]}</em>.</li>
+                </ul>
+                <Textarea placeholder="Voeg een notitie toe…" className="mt-3 text-sm" rows={2} />
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-medium mt-0.5 capitalize">{value}</div>
+    </div>
+  );
+}
+
+function VerbeterBadge({ status }: { status: VerbeterStatus }) {
+  const s = flowStyle[status];
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset"
+      style={{ backgroundColor: s.bg, color: s.fg, boxShadow: `inset 0 0 0 1px ${s.fg}20` }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.fg }} />
+      {verbeterStatusLabels[status]}
+    </span>
+  );
+}
