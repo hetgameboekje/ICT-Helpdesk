@@ -207,6 +207,17 @@ render-/state-logica (loading/empty/error-states, URL-querystring als filterstat
 toevoegen, status wijzigen (incl. tijdlijn-update), tijd registreren — allemaal via de nieuwe API,
 zonder page reload. CSRF-check getest (419 zonder token, 201 met), 401/404/422 getest via curl.
 
+**SOLID-review (2026-07-24):** `TicketService` had een herhaald find-of-404 + scope-autorisatiecheck
+(dezelfde 6 regels) in `update`/`delete`/`addLog`/`addTijd`/`kennisbankKoppel`/`kennisbankOntkoppel` —
+een SRP/DRY-schending: elke methode droeg zowel "ticket ophalen + autoriseren" als de eigenlijke actie.
+Opgelost met een private `findOrFail(int $id, array $currentUser): array` die `NotFoundException`/
+`ForbiddenException` op één plek gooit; de zes methoden roepen die nu aan i.p.v. de check te herhalen.
+Overige SOLID-observaties uit dezelfde review (bewust nog niet doorgevoerd): `ApiController::requireAuth()`/
+`requirePermission()` gebruiken `exit` na `error()` i.p.v. een exception zoals de rest van `handle()` —
+zou voor een uniform foutpad ook via een exception moeten lopen, maar is functioneel niet fout; Services
+zijn hard-coupled aan static Model-classes (bewust, zie hierboven — pas relevant zodra er unit-tests
+voor Services komen).
+
 **Vervolg**: zodra dit patroon is goedgekeurd, kan het per module herhaald worden (Service + API-
 controller + JS-pagina + shell-view). De oude server-rendered routes per module blijven intact totdat
 die module is overgezet — geen big-bang-migratie.
@@ -229,15 +240,42 @@ Android-app daadwerkelijk gebouwd wordt, moet daar een tweede auth-modus (bv. be
 bij inloggen) naast komen — nog niet gebouwd, wel een randvoorwaarde om `requireAuth()` op dat moment
 uitbreidbaar te houden i.p.v. hardcoded aan de sessiecookie.
 
-**Kennisbank (in uitvoering, stap 3 van de rollout hierboven):** `KennisbankService` +
-`Api\V1\KennisbankApiController` zijn toegevoegd naar het Tickets-patroon (`GET/POST /api/v1/kennisbank`,
-`GET/PUT/DELETE /api/v1/kennisbank/{id}`), lokaal gecontroleerd (401 zonder sessie, envelope-vorm
-klopt). De categorieën/subcategorieën/tags-lookups (`/kennisbank/categorieen` etc.) blijven voorlopig
-op de oude server-rendered route — die zijn nog nodig voor de create/edit-formulieren en worden
-meegenomen zodra de frontend van deze module wordt omgezet. **Nog te doen:** thin-shell views
-(`index.php`/`show.php` leegmaken zoals bij Tickets), en de JS-pagina's die de daadwerkelijke
-`docs/design/modules.kennisbank.tsx` (+ `mailmind.tsx` voor de EmailVerwerking-koppeling) omzetten
-naar vanilla JS tegen de nieuwe endpoints.
+**Belangrijk — `docs/design/*.tsx` staat niet betrouwbaar synchroon met Lovable, gebruik altijd de
+Lovable MCP:** `docs/design/modules.kennisbank.tsx` bleek bij de conversie hieronder de verkeerde
+content te bevatten (de `/mailmind`-pagina, niet `/modules/kennisbank`) — vermoedelijk een fout bij
+het platslaan van de geëxporteerde `src/routes/*`-structuur naar een flat directory. Bevestigd via
+`mcp__claude_ai_Lovable__list_files`/`read_file` tegen project `4675b36f-276e-4fc5-9606-d83a98f9d801`:
+de echte bron staat op `src/routes/modules.<naam>.tsx` (en `src/routes/mailmind.tsx`,
+`src/routes/tickets.*.tsx`, `src/components/*`). **Gebruik voor elke volgende moduleconversie de
+Lovable MCP `list_files`/`read_file`-tools rechtstreeks tegen dat project, niet de gecommitte kopie
+onder `docs/design/`** — die laatste is alleen nog bruikbaar voor de gedeelde UI-componenten/tokens
+(`design-system.tsx`, `mock-data.ts`) waarvan niet gebleken is dat ze afwijken.
+
+**Kennisbank (afgerond, stap 3 van de rollout hierboven):** volledig 3-laags overgezet naar het
+Tickets-patroon.
+- Backend: `KennisbankService` + `Api\V1\KennisbankApiController` (`GET/POST /api/v1/kennisbank`,
+  `GET/PUT/DELETE /api/v1/kennisbank/{id}`) + `TicketKennisbankModel::gekoppeldeTicketsVoorArtikel()`
+  (omgekeerde richting van de bestaande ticket→KB-koppeling, voor het "Gekoppelde tickets"-paneel).
+- Frontend: `Views/KennisbankView/index.php` én `show.php` zijn nu identieke thin shells;
+  `public/assets/js/pages/kennisbank-index.js` bouwt de split-view (artikellijst + detailpaneel in
+  één scherm) uit `src/routes/modules.kennisbank.tsx`, zonder page-load bij het wisselen van artikel
+  (`pushState`/`popstate`) — dit lost meteen het eerder genoteerde "inline voorbeeldpaneel"-punt op.
+  `/kennisbank/{id}` (vanuit `tickets-show.js`) en `/kennisbank` renderen dezelfde shell; het
+  artikel-id wordt uit het URL-pad gelezen, niet server-side doorgegeven.
+- Bewuste afwijkingen t.o.v. de mockup (zie ook de code-comment bovenaan `kennisbank-index.js`):
+  geen "alle/gepubliceerd/concept"-filtertabs en geen inline "Goedkeuren/Afwijzen" (AI-conceptartikelen
+  leven in een aparte reviewwachtrij, `/email-verwerking`, niet als status op een gepubliceerd
+  artikel); categoriefilter als dropdown i.p.v. Lovable's ontbrekende boomstructuur; de twee
+  verzonnen KPI's blijven vervangen door "Categorieën"/"AI-concepten in review" (eerder al zo
+  besloten, nu ook zo geïmplementeerd).
+- Lokaal geverifieerd: `php -l` schoon op alle bestanden, server boot zonder fatale fouten op zowel
+  onbeauthenticeerde HTML-routes (302 naar /login) als de nieuwe API-routes (401 JSON). Een volledige
+  ingelogde klik-door-test kon niet lokaal afgerond worden (lokale DB/seed-gebruiker niet beschikbaar
+  in deze omgeving) — nog te doen door QA in een omgeving met een werkende lokale database.
+- **Nog niet meegenomen:** MailMind-pagina (`src/routes/mailmind.tsx`) staat los van deze conversie
+  en hoort bij `App\Modules\EmailVerwerking` — apart op te pakken. `/kennisbank/create` en
+  `/kennisbank/{id}/edit` staan nog op de oude server-rendered formulieren (niet in scope van de
+  mockup-conversie, die toont geen formulier).
 
 ## Roadmap / openstaande verbeterpunten
 

@@ -60,6 +60,15 @@ De custom router (`app/Core/Router.php`) ondersteunt:
 - `database/parse.php` zet XML om naar `database/.parsed/schema.sql`.
 - `database/seed.php` maakt demo-gebruikers aan.
 
+### API-laag (`/api/v1/*`)
+
+Naast de server-rendered routes bouwt de app een JSON-API-laag op, 3 lagen dik: Presentation
+(`App\Api\V1\*Controller`, alleen HTTP in/uit), Service/Business (`App\Modules\<Module>\<Naam>Service`,
+validatie/autorisatie, geen HTTP-concepten) en Data Access (de bestaande `*Model`-classes). Tickets en
+Kennisbank zijn hierop overgezet; overige modules volgen stap voor stap. Zie CLAUDE.md voor het volledige
+patroon, de envelope-vorm en het "SOLID-review"-punt over de gedeelde `findOrFail()`-helper in
+`TicketService` (voorkomt dat elke methode zijn eigen find-of-404 + scope-check herhaalt).
+
 ## Projectstructuur
 
 ```text
