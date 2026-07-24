@@ -10,7 +10,7 @@ import { api, ApiError } from '/assets/js/api/client.js';
  * hebben we een direct `prioriteit`-veld (laag/middel/hoog/kritiek) en een los `status`-veld
  * (nieuw/in_onderzoek/bevestigd/opgelost/geaccepteerd); de risicomatrix-widget is vervangen door
  * een statusbadge + een echt logboek (cyberrisico_logs, zelfde patroon als Tickets), en de
- * prioriteits-KPI's/badges gebruiken de bestaande --color-risk-*/badge-risico-*-tokens ("middel"
+ * prioriteits-KPI's/badges gebruiken de bestaande --color-risk-*, badge-risico-*-tokens ("middel"
  * hergebruikt de "gemiddeld"-CSS-klasse, enige naam die niet 1-op-1 overeenkomt).
  */
 
