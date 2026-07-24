@@ -97,7 +97,37 @@ for scripts/commands.
 **Rollout plan (see the plan file above for full detail; step by step, verify manually after each
 since there's no test suite):**
 0. ✅ Done — tokens/typography replaced in `public/assets/css/app.css`, fonts swapped in both layouts.
-1. ✅ Done — sidebar navigation + Dashboard/Overview.
+1. ✅ Done — sidebar navigation. **Dashboard** (`app/Views/dashboard/index.php`, rendered by
+   `app/Shared/Dashboard/DashboardController.php`) rebuilt 1-op-1 against Lovable's
+   `src/routes/index.tsx` (fetched live via the Lovable MCP `read_file` tool, not the committed
+   `docs/design/` copy — see the "echte Lovable-conversie"-besluit onder API-architectuur hieronder
+   voor de reden dat gecommitte kopie niet betrouwbaar is). Gebouwd: topbar-titel "Goedemorgen/middag/
+   avond, {voornaam} 👋" + breadcrumb "Werkplek" via `$pageTitle`/`$breadcrumbs`; 4-koloms KPI-rij
+   (`.kpi-grid`/`.kpi-card`, nieuwe iconklassen `.kpi-icon-wachtend`/`.kpi-icon-risk` toegevoegd naast
+   de bestaande `-open`/`-behandeling`/`-opgelost`/`-neutral`); 2-koloms `.dashboard-grid` met "Recente
+   tickets" (rij-items i.p.v. `<table>`, nieuwe `.row-list`/`.row-list-item`-klassen) en "Agenda
+   vandaag" (`.agenda-today-item` met kleur-accentrand per event-type + een "nu"-indicator voor het
+   lopende item); "Snelkoppelingen" als kaartgrid (`.shortcut-grid`/`.shortcut-card`). **Bewuste
+   afwijking van de mockup-KPI's:** Lovable toont "Wacht op reactie" en "Opgelost vandaag" met
+   verzonnen delta-getallen ("+6 vs. gisteren"). "Wacht op reactie" bleek wél een echte, bestaande
+   status te hebben (`tickets.status = 'wacht_op_info'`, al gebruikt door `TicketModel::actief()`/de
+   statusbadges) en is dus met een echte telling gebouwd (`TicketModel::countByStatus('wacht_op_info')`).
+   Voor "Opgelost vandaag" bestaat geen vergelijkbare telling (`opgelost`/`gesloten` zijn oude,
+   samengevoegde statuswaarden zonder datumfilter) — vervangen door "Open cyberrisico's"
+   (`CyberRisicoModel::countOpen()`, al elders op het dashboard gebruikt), zelfde aanpak als de
+   Kennisbank-KPI-vervanging hieronder. Delta-teksten zijn overal weggelaten — geen enkele bestaande
+   telling heeft een vergelijkingswaarde, dus er is nergens een getal verzonnen. **Echte
+   functionaliteit die de mockup niet toont, bewust behouden** (het omgekeerde van de normale
+   weglaat-regel, expliciet gevraagd voor dit scherm): de "Nieuw ticket"/"Risico melden"/"Dag starten"/
+   "Dag afsluiten"-knoppen + modals (nu in een `.dashboard-actionbar` boven de KPI's i.p.v. naast de
+   titel), de klikbare Chart.js-cyberrisicografiek (opent een incidenten-modal per dag), en de
+   agenda-widget met volledige CRUD (`/agenda/events` fetch + opslaan/verwijderen) — dit blijft
+   server-rendered PHP + vanilla JS (geen JSON-API-laag zoals bij Tickets, zie "API-architectuur"
+   hieronder). Lokaal geverifieerd (ingelogd via geseede gebruiker, HTML-response gecontroleerd op
+   PHP-fouten/warnings): dashboard rendert met echte data (open tickets, wacht_op_info, in
+   behandeling, cyberrisico's, recente tickets, top-hardware, telefoonlijst, snelkoppelingen). Geen
+   visuele browser-check in licht/donker thema gedaan in deze sessie (geen headed browser
+   beschikbaar) — nog te doen voordat dit als volledig afgerond geldt.
 2. ✅ Done — Ticket module (list + detail), the 3-laags/API reference pattern (see
    "API-architectuur" below) copied into later modules.
 3. ✅ Kennisbank done (3-laags + echte Lovable-conversie, zie "API-architectuur" hieronder);
