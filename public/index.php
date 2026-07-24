@@ -10,6 +10,8 @@ use App\Api\V1\KennisbankApiController;
 use App\Api\V1\MedewerkersApiController;
 use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
+use App\Api\V1\SchijfgebruikApiController;
+use App\Api\V1\ScriptsApiController;
 use App\Api\V1\TicketsApiController;
 use App\Api\V1\UitgiftenApiController;
 use App\Api\V1\VerbeterpuntenApiController;
@@ -235,6 +237,21 @@ $router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiCon
 $router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
 $router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
 $router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
+
+$router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class, 'index']);
+$router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
+$router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
+
+$router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
+$router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
+$router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
+
+$router->get('/api/v1/scripts', [ScriptsApiController::class, 'index']);
+$router->get('/api/v1/scripts/{id}', [ScriptsApiController::class, 'show']);
+$router->add('DELETE', '/api/v1/scripts/{id}', [ScriptsApiController::class, 'destroy']);
+
+$router->get('/api/v1/schijfgebruik', [SchijfgebruikApiController::class, 'index']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);

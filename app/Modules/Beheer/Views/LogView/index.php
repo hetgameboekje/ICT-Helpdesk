@@ -5,9 +5,11 @@
 /** @var array $ipAdressen */
 /** @var array $filters */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/beheer-tabs.php';
 
 use App\Core\Table;
 ?>
+<?= beheerTabs('log') ?>
 <div class="page-header">
   <div class="page-title">Paginabezoeken</div>
 </div>

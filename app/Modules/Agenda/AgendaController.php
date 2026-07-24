@@ -4,6 +4,7 @@ namespace App\Modules\Agenda;
 
 use App\Core\Controller;
 use App\Modules\Agenda\Models\AgendaItemModel;
+use App\Modules\Medewerker\Models\MedewerkerModel;
 use App\Modules\Ticket\Models\TicketModel;
 use App\Modules\Verbeterpunt\Models\VerbeterpuntModel;
 use App\Shared\Rechten\Models\RechtenModel;
@@ -28,6 +29,7 @@ class AgendaController extends Controller
             'verbeterpunten' => VerbeterpuntModel::all('titel ASC'),
             'huidigeGebruikerId' => $this->currentUserId(),
             'types' => AgendaItemModel::TYPES,
+            'teamVandaag' => MedewerkerModel::alleMetInBehandelingTellingen(),
         ]);
     }
 

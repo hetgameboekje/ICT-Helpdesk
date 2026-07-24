@@ -130,6 +130,28 @@ class MedewerkerModel extends Model
         return $stmt->fetchAll();
     }
 
+    /**
+     * Actieve medewerkers met een gekoppelde login, met het aantal tickets dat nu bij hen "in
+     * behandeling" staat — voor het "Team vandaag"-paneel in de Agenda-module (zie
+     * AgendaController::index()). Alleen medewerkers met minstens 1 in-behandeling-ticket eerst,
+     * dan de rest, zodat de drukste collega's bovenaan staan.
+     */
+    public static function alleMetInBehandelingTellingen(int $limit = 8): array
+    {
+        $sql = "
+            SELECT m.id, m.voornaam, m.achternaam, m.functie,
+                   (SELECT COUNT(*) FROM tickets t WHERE t.behandelaar_id = m.user_id AND t.status = 'in_behandeling' AND t.deleted_at IS NULL) AS in_behandeling
+            FROM medewerkers m
+            WHERE m.deleted_at IS NULL AND m.status = 'actief' AND m.user_id IS NOT NULL
+            ORDER BY in_behandeling DESC, m.achternaam ASC
+            LIMIT ?
+        ";
+        $stmt = Database::pdo()->prepare($sql);
+        $stmt->bindValue(1, $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     public static function searchNamen(string $q): array
     {
         $stmt = Database::pdo()->prepare(

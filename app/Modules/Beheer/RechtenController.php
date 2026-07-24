@@ -12,6 +12,7 @@ class RechtenController extends Controller
     public function index(): void
     {
         $this->requireAdmin();
+        require_once APP_ROOT . '/app/Views/partials/beheer-tabs.php';
 
         $gebruikers = UserModel::all('naam ASC');
         $gedeactiveerd = UserModel::allGedeactiveerd('naam ASC');
@@ -37,7 +38,8 @@ class RechtenController extends Controller
             }, ['class' => 'col-1', 'sortable' => false])
             ->rows($gebruikers);
 
-        $content = '<div class="page-header"><div class="page-title">Rechten</div>'
+        $content = beheerTabs('rechten')
+            . '<div class="page-header"><div class="page-title">Rechten</div>'
             . '<a class="btn btn-primary" href="/beheer/rechten/nieuw">+ Nieuwe gebruiker</a></div>'
             . ($flashSuccess ? '<div class="alert alert-success">' . htmlspecialchars($flashSuccess) . '</div>' : '')
             . ($flashError ? '<div class="alert alert-error">' . htmlspecialchars($flashError) . '</div>' : '')

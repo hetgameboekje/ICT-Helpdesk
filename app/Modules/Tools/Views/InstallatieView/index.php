@@ -3,11 +3,13 @@
 /** @var array $profielen */
 /** @var array $opdrachten */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
 
 $flashSuccess = $_SESSION['flash_success'] ?? null;
 $flashError = $_SESSION['flash_error'] ?? null;
 unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 ?>
+<?= toolsTabs('installatie') ?>
 <div class="page-header">
   <div class="page-title">Installatie</div>
   <a class="btn btn-primary" href="/tools/installatie/opdrachten/nieuw">+ Toewijzen aan apparaat</a>
