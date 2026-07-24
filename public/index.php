@@ -3,6 +3,7 @@
 require __DIR__ . '/../app/bootstrap.php';
 
 use App\Api\V1\DevicesApiController;
+use App\Api\V1\CyberRisicosApiController;
 use App\Api\V1\HardwareUitgavenApiController;
 use App\Api\V1\KennisbankApiController;
 use App\Api\V1\PrintersApiController;
@@ -216,6 +217,12 @@ $router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiCon
 $router->get('/api/v1/uitgiften', [UitgiftenApiController::class, 'index']);
 $router->get('/api/v1/uitgiften/{id}', [UitgiftenApiController::class, 'show']);
 $router->post('/api/v1/uitgiften/{id}/retour', [UitgiftenApiController::class, 'retour']);
+
+$router->get('/api/v1/cyberrisicos', [CyberRisicosApiController::class, 'index']);
+$router->get('/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'show']);
+$router->post('/api/v1/cyberrisicos/{id}/log', [CyberRisicosApiController::class, 'addLog']);
+$router->add('PUT', '/api/v1/cyberrisicos/{id}/status', [CyberRisicosApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
