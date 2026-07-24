@@ -3,7 +3,9 @@
 require __DIR__ . '/../app/bootstrap.php';
 
 use App\Api\V1\KennisbankApiController;
+use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
+use App\Api\V1\VerbeterpuntenApiController;
 use App\Core\Router;
 use App\Modules\Account\AccountController;
 use App\Modules\Agenda\AgendaController;
@@ -172,6 +174,19 @@ $router->post('/api/v1/kennisbank', [KennisbankApiController::class, 'store']);
 $router->get('/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'show']);
 $router->add('PUT', '/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'destroy']);
+
+$router->get('/api/v1/verbeterpunten', [VerbeterpuntenApiController::class, 'index']);
+$router->post('/api/v1/verbeterpunten', [VerbeterpuntenApiController::class, 'store']);
+$router->get('/api/v1/verbeterpunten/{id}', [VerbeterpuntenApiController::class, 'show']);
+$router->add('PUT', '/api/v1/verbeterpunten/{id}', [VerbeterpuntenApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/verbeterpunten/{id}', [VerbeterpuntenApiController::class, 'destroy']);
+$router->post('/api/v1/verbeterpunten/{id}/log', [VerbeterpuntenApiController::class, 'addLog']);
+
+$router->get('/api/v1/reflecties', [ReflectiesApiController::class, 'index']);
+$router->post('/api/v1/reflecties', [ReflectiesApiController::class, 'store']);
+$router->get('/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'show']);
+$router->add('PUT', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/reflecties/{id}', [ReflectiesApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);

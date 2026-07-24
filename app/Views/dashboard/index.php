@@ -13,46 +13,44 @@
 /** @var array|null $laatsteTelefoonlijst */
 /** @var array $urenstaatLocaties */
 /** @var array|null $urenstaatOpen */
+/** @var int $mailmindInReview */
 
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
 
 $chartDates  = array_map(fn(array $d) => $d['datum'], $cyberrisicosPerDag);
 $chartLabels = array_map(fn(array $d) => date('d-m', strtotime($d['datum'])), $cyberrisicosPerDag);
 $chartData   = array_map(fn(array $d) => $d['aantal'], $cyberrisicosPerDag);
+
+/**
+ * Snelkoppelingen — zie Lovable src/routes/index.tsx (kpis/shortcuts-array). Alleen modules tonen
+ * waar de gebruiker leesrecht op heeft; subtitels zijn ofwel een echte, al beschikbare telling
+ * (mailmind-reviewqueue, medewerkersaantal) ofwel een generieke actietekst — nooit verzonnen data.
+ */
+$shortcuts = [];
+if ($mag['tickets']['schrijven']) {
+    $shortcuts[] = ['titel' => 'Nieuw ticket', 'sub' => 'Handmatig aanmaken', 'icon' => 'bi-ticket-perforated', 'href' => '/tickets/create'];
+}
+if ($mag['email_verwerking']['lezen']) {
+    $sub = $mailmindInReview > 0 ? "{$mailmindInReview} concept(en) wachten op review" : 'Review-wachtrij';
+    $shortcuts[] = ['titel' => 'MailMind queue', 'sub' => $sub, 'icon' => 'bi-stars', 'href' => '/email-verwerking/review'];
+}
+if ($mag['voorraad']['lezen']) {
+    $shortcuts[] = ['titel' => 'Voorraad', 'sub' => 'Voorraadbeheer', 'icon' => 'bi-boxes', 'href' => '/voorraad'];
+}
+if ($mag['medewerkers']['lezen']) {
+    $shortcuts[] = ['titel' => 'Medewerkers', 'sub' => $stats['medewerkers'] . ' medewerkers', 'icon' => 'bi-people', 'href' => '/medewerkers'];
+}
+if ($mag['kennisbank']['lezen']) {
+    $shortcuts[] = ['titel' => 'Kennisbank', 'sub' => 'Artikelen doorzoeken', 'icon' => 'bi-book', 'href' => '/kennisbank'];
+}
+if ($mag['printers']['lezen']) {
+    $shortcuts[] = ['titel' => 'Printers', 'sub' => 'Printerbeheer', 'icon' => 'bi-printer', 'href' => '/printers'];
+}
 ?>
 
-<style>
-    .cursor-pointer {
-        cursor: pointer;
-    }
-
-    .agenda-item:hover {
-        background-color: rgba(var(--bs-secondary-rgb), .08);
-    }
-
-    .chart-wrap {
-        position: relative;
-        height: 220px;
-    }
-
-    .text-truncate-1 {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    @media (max-width: 575.98px) {
-        .chart-wrap {
-            height: 200px;
-        }
-    }
-</style>
-
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <h1 class="h3 mb-0">Dashboard</h1>
-
-    <div class="ms-auto d-flex gap-2">
+<?php if ($mag['tickets']['schrijven'] || $mag['cyberrisicos']['schrijven'] || $mag['urenstaat']['schrijven']): ?>
+<div class="dashboard-actionbar">
+    <div class="ms-auto d-flex gap-2 flex-wrap">
         <?php if ($mag['tickets']['schrijven']): ?>
         <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#dashTicketModal">
             <i class="bi bi-plus-circle"></i> Nieuw ticket
@@ -84,12 +82,10 @@ $chartData   = array_map(fn(array $d) => $d['aantal'], $cyberrisicosPerDag);
         <?php endif; ?>
     </div>
 </div>
+<?php endif; ?>
 
-
-
-
-<div class="kpi-grid">
-    <?php if ($mag['tickets']['lezen']): ?>
+<?php if ($mag['tickets']['lezen']): ?>
+<section class="kpi-grid">
     <a class="kpi-card" href="/tickets?status=open">
         <div class="kpi-card-head">
             <span class="kpi-label">Open tickets</span>
@@ -98,90 +94,152 @@ $chartData   = array_map(fn(array $d) => $d['aantal'], $cyberrisicosPerDag);
         <div class="kpi-value"><?= (int) $stats['tickets_open'] ?></div>
     </a>
 
+    <a class="kpi-card" href="/tickets?status=wacht_op_info">
+        <div class="kpi-card-head">
+            <span class="kpi-label">Wacht op reactie</span>
+            <span class="kpi-icon kpi-icon-wachtend"><i class="bi bi-hourglass-split"></i></span>
+        </div>
+        <div class="kpi-value"><?= (int) $stats['tickets_wacht_op_info'] ?></div>
+    </a>
+
     <a class="kpi-card" href="/tickets?status=in_behandeling">
         <div class="kpi-card-head">
             <span class="kpi-label">In behandeling</span>
-            <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-hourglass-split"></i></span>
+            <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-arrow-repeat"></i></span>
         </div>
         <div class="kpi-value"><?= (int) $stats['tickets_in_behandeling'] ?></div>
     </a>
-    <?php endif; ?>
 
-    <?php if ($mag['verbeterpunten']['lezen']): ?>
-    <a class="kpi-card" href="/verbeterpunten">
-        <div class="kpi-card-head">
-            <span class="kpi-label">Verbeterpunten</span>
-            <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-lightbulb"></i></span>
-        </div>
-        <div class="kpi-value"><?= (int) $stats['verbeterpunten'] ?></div>
-    </a>
-    <?php endif; ?>
-
-    <?php if ($mag['medewerkers']['lezen']): ?>
-    <a class="kpi-card" href="/medewerkers">
-        <div class="kpi-card-head">
-            <span class="kpi-label">Medewerkers</span>
-            <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-people"></i></span>
-        </div>
-        <div class="kpi-value"><?= (int) $stats['medewerkers'] ?></div>
-    </a>
-    <?php endif; ?>
-
-    <div class="kpi-card">
-        <div class="kpi-card-head">
-            <span class="kpi-label">Laatste telefoonlijst</span>
-            <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-telephone"></i></span>
-        </div>
-        <?php if ($laatsteTelefoonlijst === null): ?>
-            <div class="kpi-sublabel">Nog geen telefoonlijst verwerkt.</div>
-            <a class="btn btn-sm btn-outline-secondary mt-2" href="/tools/telefoonlijst">Openen</a>
-        <?php else: ?>
-            <div class="kpi-sublabel">
-                <?= formatDatumTijd($laatsteTelefoonlijst['processed_at']) ?> &middot;
-                <?= (int) $laatsteTelefoonlijst['contact_count'] ?> contact(en)
-            </div>
-            <a class="btn btn-sm btn-primary mt-2" href="/tools/telefoonlijst/<?= (int) $laatsteTelefoonlijst['id'] ?>/download">Download .vcf</a>
-        <?php endif; ?>
-    </div>
-</div>
-
-<div class="row g-3 mb-3">
     <?php if ($mag['cyberrisicos']['lezen']): ?>
-    <div class="col-12 col-lg-6 d-flex">
-        <div class="card w-100 h-100">
-            <div class="card-header">
-                <span class="card-title">Gemelde cyberrisico's — laatste 30 dagen</span>
-                <a class="btn" href="/cyberrisicos">Alle risico's &rarr;</a>
-            </div>
-            <div class="card-body">
-                <div class="chart-wrap">
-                    <canvas id="cyberrisicoChart"></canvas>
-                </div>
-            </div>
+    <a class="kpi-card" href="/cyberrisicos?status=open">
+        <div class="kpi-card-head">
+            <span class="kpi-label">Open cyberrisico's</span>
+            <span class="kpi-icon kpi-icon-risk"><i class="bi bi-shield-exclamation"></i></span>
         </div>
+        <div class="kpi-value"><?= (int) $cyberrisicosOpen ?></div>
+    </a>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<div class="dashboard-grid mb-3">
+    <?php if ($mag['tickets']['lezen']): ?>
+    <div class="card mb-0">
+        <div class="card-header">
+            <div>
+                <span class="card-title">Recente tickets</span>
+                <div class="card-subtitle">Meest recent aangemaakt of gewijzigd</div>
+            </div>
+            <a class="btn" href="/tickets">Alle tickets &rarr;</a>
+        </div>
+
+        <?php if (empty($actieveTickets)): ?>
+            <div class="empty-state">Geen actieve tickets.</div>
+        <?php else: ?>
+            <div class="row-list">
+                <?php foreach ($actieveTickets as $t): ?>
+                    <a class="row-list-item" href="/tickets/<?= (int) $t['id'] ?>">
+                        <span class="row-list-num">#<?= (int) $t['id'] ?></span>
+                        <span class="row-list-title" title="<?= htmlspecialchars($t['titel']) ?>"><?= htmlspecialchars(truncateWoorden($t['titel'])) ?></span>
+                        <span class="row-list-meta"><?= htmlspecialchars($t['opdrachtgever_naam'] ?? '—') ?></span>
+                        <?= statusBadge($t['status']) ?>
+                        <span class="row-list-time"><?= formatDatumTijd($t['updated_at'] ?? $t['created_at']) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
     <?php if ($mag['agenda']['lezen']): ?>
-    <div class="col-12 col-lg-6 d-flex">
-        <div class="card w-100 h-100">
-            <div class="card-header">
-                <a class="card-title" href="/agenda">Mijn agenda</a>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <input type="date" id="dashAgendaDatum" class="form-control form-control-sm" style="width:auto;">
-                    <?php if ($mag['agenda']['schrijven']): ?>
-                    <button class="btn btn-sm btn-primary" type="button" id="dashAgendaNieuwBtn">+ Toevoegen</button>
-                    <?php endif; ?>
-                </div>
+    <div class="card mb-0">
+        <div class="card-header">
+            <div>
+                <a class="card-title" href="/agenda"><i class="bi bi-calendar3 me-1"></i>Agenda vandaag</a>
+                <div class="card-subtitle">Wat er vandaag op de planning staat</div>
             </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <input type="date" id="dashAgendaDatum" class="form-control form-control-sm" style="width:auto;">
+                <?php if ($mag['agenda']['schrijven']): ?>
+                <button class="btn btn-sm btn-primary" type="button" id="dashAgendaNieuwBtn">+ Toevoegen</button>
+                <?php endif; ?>
+            </div>
+        </div>
 
-            <div class="card-body py-2" id="dashAgendaLijst">
-                <div class="text-body-secondary">Laden...</div>
-            </div>
+        <div id="dashAgendaLijst">
+            <div class="text-body-secondary p-3">Laden...</div>
         </div>
     </div>
     <?php endif; ?>
 </div>
+
+<?php if ($mag['cyberrisicos']['lezen']): ?>
+<div class="card">
+    <div class="card-header">
+        <div>
+            <span class="card-title">Gemelde cyberrisico's</span>
+            <div class="card-subtitle">Laatste 30 dagen</div>
+        </div>
+        <a class="btn" href="/cyberrisicos">Alle risico's &rarr;</a>
+    </div>
+    <div class="card-body" style="padding:16px 20px">
+        <div class="chart-wrap">
+            <canvas id="cyberrisicoChart"></canvas>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($mag['uitgiften']['lezen'] && !empty($topUitgegevenHardware)): ?>
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Top 5 uitgegeven hardware</span>
+        <a class="btn" href="/uitgiften">Alle uitgiften &rarr;</a>
+    </div>
+    <div class="row-list">
+        <?php foreach ($topUitgegevenHardware as $t): ?>
+            <a class="row-list-item" href="/voorraad?type_naam=<?= urlencode($t['naam'] ?? '') ?>">
+                <span class="row-list-title"><?= htmlspecialchars($t['naam'] ?? 'Onbekend') ?></span>
+                <span class="row-list-meta mono"><?= htmlspecialchars($t['code'] ?? '—') ?></span>
+                <span class="row-list-time"><?= (int) $t['aantal'] ?> stuks</span>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Laatste telefoonlijst</span>
+    </div>
+    <div style="padding:16px 20px">
+        <?php if ($laatsteTelefoonlijst === null): ?>
+            <div class="kpi-sublabel mb-2">Nog geen telefoonlijst verwerkt.</div>
+            <a class="btn btn-sm btn-outline-secondary" href="/tools/telefoonlijst">Openen</a>
+        <?php else: ?>
+            <div class="kpi-sublabel mb-2">
+                <?= formatDatumTijd($laatsteTelefoonlijst['processed_at']) ?> &middot;
+                <?= (int) $laatsteTelefoonlijst['contact_count'] ?> contact(en)
+            </div>
+            <a class="btn btn-sm btn-primary" href="/tools/telefoonlijst/<?= (int) $laatsteTelefoonlijst['id'] ?>/download">Download .vcf</a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if (!empty($shortcuts)): ?>
+<section>
+    <h2 class="h6 mb-3">Snelkoppelingen</h2>
+    <div class="shortcut-grid">
+        <?php foreach ($shortcuts as $s): ?>
+            <a class="shortcut-card" href="<?= htmlspecialchars($s['href']) ?>">
+                <i class="bi <?= htmlspecialchars($s['icon']) ?>"></i>
+                <div class="shortcut-title"><?= htmlspecialchars($s['titel']) ?></div>
+                <div class="shortcut-subtitle"><?= htmlspecialchars($s['sub']) ?></div>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
 
 <?php if ($mag['tickets']['schrijven']): ?>
 <div class="modal fade" id="dashTicketModal" tabindex="-1" aria-labelledby="dashTicketModalTitel" aria-hidden="true">
@@ -439,81 +497,18 @@ $chartData   = array_map(fn(array $d) => $d['aantal'], $cyberrisicosPerDag);
 </div>
 <?php endif; ?>
 
-<?php if ($mag['tickets']['lezen']): ?>
-<div class="card">
-    <div class="card-header">
-        <span class="card-title">Actieve tickets</span>
-        <a class="btn" href="/tickets">Alle tickets &rarr;</a>
-    </div>
+<style>
+    .chart-wrap {
+        position: relative;
+        height: 220px;
+    }
 
-    <?php if (empty($actieveTickets)): ?>
-        <div class="empty-state">Geen actieve tickets.</div>
-    <?php else: ?>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="col-1">#</th>
-                        <th>Taak</th>
-                        <th class="col-2">Afdeling</th>
-                        <th class="col-2">Prioriteit</th>
-                        <th class="col-2">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($actieveTickets as $t): ?>
-                        <tr onclick="window.location='/tickets/<?= (int) $t['id'] ?>'">
-                            <td class="mono" style="color:var(--color-text-tertiary)">#<?= (int) $t['id'] ?></td>
-                            <td>
-                                <span title="<?= htmlspecialchars($t['titel']) ?>">
-                                    <?= htmlspecialchars(truncateWoorden($t['titel'])) ?>
-                                </span>
-                            </td>
-                            <td><?= htmlspecialchars($t['afdeling_naam'] ?? '—') ?></td>
-                            <td><?= prioBadge($t['prioriteit']) ?></td>
-                            <td><?= statusBadge($t['status']) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
-
-<?php if ($mag['uitgiften']['lezen']): ?>
-<div class="card">
-    <div class="card-header">
-        <span class="card-title">Top 5 uitgegeven hardware</span>
-        <a class="btn" href="/uitgiften">Alle uitgiften &rarr;</a>
-    </div>
-
-    <?php if (empty($topUitgegevenHardware)): ?>
-        <div class="empty-state">Nog geen hardware uitgegeven.</div>
-    <?php else: ?>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th class="col-2">Code</th>
-                        <th class="col-2">Uitgegeven</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($topUitgegevenHardware as $t): ?>
-                        <tr onclick="window.location='/voorraad?type_naam=<?= urlencode($t['naam'] ?? '') ?>'">
-                            <td><?= htmlspecialchars($t['naam'] ?? 'Onbekend') ?></td>
-                            <td style="color:var(--color-text-tertiary)"><?= htmlspecialchars($t['code'] ?? '—') ?></td>
-                            <td><?= (int) $t['aantal'] ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
-<?php endif; ?>
+    @media (max-width: 575.98px) {
+        .chart-wrap {
+            height: 200px;
+        }
+    }
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -640,33 +635,56 @@ document.addEventListener('DOMContentLoaded', function () {
         return iso.slice(11, 16);
     }
 
+    function isNu(ev) {
+        var nu = new Date();
+        var start = new Date(ev.start);
+        var eind = new Date(ev.end);
+        return nu >= start && nu < eind;
+    }
+
     function laadDag() {
         var datum = datumInput.value || vandaagStr();
-        lijst.innerHTML = '<div class="text-body-secondary">Laden...</div>';
+        lijst.innerHTML = '<div class="text-body-secondary p-3">Laden...</div>';
 
         fetch('/agenda/events?start=' + datum + 'T00:00:00&end=' + volgendeDagStr(datum) + 'T00:00:00')
             .then(function (r) { return r.json(); })
             .then(function (events) {
                 if (!events.length) {
-                    lijst.innerHTML = '<div class="text-body-secondary">Geen afspraken op deze dag.</div>';
+                    lijst.innerHTML = '<div class="text-body-secondary p-3">Geen afspraken op deze dag.</div>';
                     return;
                 }
 
-                lijst.innerHTML = '';
+                events.sort(function (a, b) { return a.start.localeCompare(b.start); });
+
                 var wrapper = document.createElement('div');
-                wrapper.className = 'list-group list-group-flush';
+                wrapper.className = 'agenda-today-list';
 
                 events.forEach(function (ev) {
                     var row = document.createElement('button');
                     row.type = 'button';
-                    row.className = 'list-group-item list-group-item-action agenda-item';
+                    row.className = 'agenda-today-item';
+                    row.style.borderLeftColor = ev.color;
+                    row.style.textAlign = 'left';
+                    row.style.width = '100%';
+                    row.style.background = 'var(--color-background-secondary)';
+                    row.style.border = '0.5px solid var(--color-border-tertiary)';
+                    row.style.borderLeftWidth = '3px';
+
+                    var nuBadge = isNu(ev)
+                        ? '<span class="agenda-now-badge"><span class="agenda-now-dot"></span>nu</span>'
+                        : '';
 
                     row.innerHTML =
-                        '<div class="d-flex align-items-center gap-3">' +
-                            '<span class="rounded-circle flex-shrink-0" style="width:10px;height:10px;background:' + ev.color + ';"></span>' +
-                            '<span class="small text-body-secondary flex-shrink-0">' + tijd(ev.start) + '–' + tijd(ev.end) + '</span>' +
-                            '<span class="text-truncate">' + ev.title.replace(/</g, '&lt;') + '</span>' +
-                        '</div>';
+                        '<span class="agenda-today-time">' + tijd(ev.start) +
+                            '<div class="agenda-today-time-end">&rarr; ' + tijd(ev.end) + '</div>' +
+                        '</span>' +
+                        '<span class="agenda-today-body">' +
+                            '<div class="agenda-today-title">' + ev.title.replace(/</g, '&lt;') + '</div>' +
+                            (ev.extendedProps && ev.extendedProps.locatie
+                                ? '<div class="agenda-today-meta">' + ev.extendedProps.locatie.replace(/</g, '&lt;') + '</div>'
+                                : '') +
+                        '</span>' +
+                        nuBadge;
 
                     row.addEventListener('click', function () {
                         openBewerken(ev);
@@ -675,6 +693,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     wrapper.appendChild(row);
                 });
 
+                lijst.innerHTML = '';
                 lijst.appendChild(wrapper);
             });
     }

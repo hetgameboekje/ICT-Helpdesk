@@ -4,9 +4,7 @@ namespace App\Modules\Verbeterpunt;
 
 use App\Core\CrudController;
 use App\Modules\Kennisbank\Models\KennisbankModel;
-use App\Modules\Verbeterpunt\Models\VerbeterpuntLogModel;
 use App\Modules\Verbeterpunt\Models\VerbeterpuntModel;
-use App\Modules\Verbeterpunt\Models\VerbeterpuntTijdModel;
 use App\Shared\Afdeling\Models\AfdelingModel;
 
 class VerbeterpuntController extends CrudController
@@ -16,6 +14,7 @@ class VerbeterpuntController extends CrudController
     protected string $routeBase = 'verbeterpunten';
     protected string $activeModule = 'verbeterpunten';
     protected string $pageTitle = 'Verbeterpunten';
+    protected array $breadcrumbs = ['Support'];
 
     protected function scopeAllowed(array $item): bool
     {
@@ -33,7 +32,7 @@ class VerbeterpuntController extends CrudController
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
-        $item = VerbeterpuntModel::findWithRelations($id);
+        $item = VerbeterpuntModel::find($id);
 
         if ($item === null) {
             http_response_code(404);
@@ -47,10 +46,6 @@ class VerbeterpuntController extends CrudController
         }
 
         $this->render("{$this->viewDir}/show", [
-            'item' => $item,
-            'logs' => VerbeterpuntLogModel::forVerbeterpunt($id),
-            'tijdregistraties' => VerbeterpuntTijdModel::forVerbeterpunt($id),
-            'tijdTotaal' => VerbeterpuntTijdModel::sumForVerbeterpunt($id),
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,

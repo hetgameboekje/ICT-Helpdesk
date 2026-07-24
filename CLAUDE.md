@@ -97,10 +97,12 @@ for scripts/commands.
 **Rollout plan (see the plan file above for full detail; step by step, verify manually after each
 since there's no test suite):**
 0. ✅ Done — tokens/typography replaced in `public/assets/css/app.css`, fonts swapped in both layouts.
-1. Sidebar navigation (replaces the top-navbar in `app/Views/layouts/app.php`) + Dashboard/Overview.
-2. Ticket module (list + detail) — the reference pattern copied into later modules.
-3. Kennisbank + EmailVerwerking/MailMind.
-4. Verbeterpunt, Reflectie.
+1. ✅ Done — sidebar navigation + Dashboard/Overview.
+2. ✅ Done — Ticket module (list + detail), the 3-laags/API reference pattern (see
+   "API-architectuur" below) copied into later modules.
+3. ✅ Kennisbank done (3-laags + echte Lovable-conversie, zie "API-architectuur" hieronder);
+   EmailVerwerking/MailMind (`src/routes/mailmind.tsx`) nog niet opgepakt.
+4. ✅ Done — Verbeterpunt, Reflectie (3-laags + echte Lovable-conversie, zie "API-architectuur").
 5. Voorraad, Device, Printer, HardwareUitgave, Uitgifte, CyberRisico.
 6. Medewerker, Agenda, Account.
 7. Beheer, Tools, Script, Schijfgebruik.
@@ -276,6 +278,37 @@ Tickets-patroon.
   en hoort bij `App\Modules\EmailVerwerking` — apart op te pakken. `/kennisbank/create` en
   `/kennisbank/{id}/edit` staan nog op de oude server-rendered formulieren (niet in scope van de
   mockup-conversie, die toont geen formulier).
+
+**Verbeterpunt + Reflectie (afgerond, stap 4 van de rollout hierboven):** zelfde 3-laags patroon,
+bron `src/routes/modules.verbeterpunt.tsx` / `modules.reflectie.tsx` via de Lovable MCP.
+- Backend: `VerbeterpuntService` + `Api\V1\VerbeterpuntenApiController`
+  (`GET/POST /api/v1/verbeterpunten`, `GET/PUT/DELETE /api/v1/verbeterpunten/{id}`,
+  `POST /api/v1/verbeterpunten/{id}/log`); `ReflectieService` + `Api\V1\ReflectiesApiController`
+  (`GET/POST /api/v1/reflecties`, `GET/PUT/DELETE /api/v1/reflecties/{id}`, geen log-endpoint, zie
+  hieronder). Beide modellen kregen een `alleenGewijzigdeVelden()` net als Ticket/Kennisbank.
+- Frontend: `Views/VerbeterpuntView/{index,show}.php` en `Views/ReflectieView/{index,show}.php` zijn
+  nu identieke thin shells; `verbeterpunten-index.js` en `reflecties-index.js` bouwen elk een
+  split-view (lijst + item in één scherm, `pushState`/`popstate`, geen page-load per item) —
+  hetzelfde patroon als Kennisbank.
+- Bewuste afwijkingen t.o.v. de mockup:
+  - Verbeterpunt: onze status-flow heeft 5 stappen (`nieuw`/`in_overweging`/`goedgekeurd`/
+    `afgewezen`/`uitgevoerd`, zie `VerbeterpuntLogController`/`edit.php` vóór deze conversie), niet
+    Lovable's 3 (`voorgesteld`/`in-uitvoering`/`afgerond`) — de 3-staps voortgangsbalk uit de mockup
+    is vervangen door een statusbadge + een echt select+opmerking-formulier tegen
+    `POST .../log` (zelfde flow als Tickets). Geen "Eigenaar"/"Impact"-velden of
+    "Gem. doorlooptijd"-KPI: die bestaan niet in het datamodel. Het logboek toont de echte
+    `verbeterpunt_logs` i.p.v. Lovable's drie hardcoded voorbeeldregels. Tijdregistratie
+    (`verbeterpunt_tijdregistraties`) bestaat wel in de backend maar niet in de mockup — niet
+    meegenomen in dit scherm.
+  - Reflectie: het bestaande opmerkingen-logboek (`reflectie_logs`, `ReflectieLogController`) komt
+    niet voor in de mockup (alleen titel+inhoud inline bewerken) — dus ook niet meegenomen in
+    `reflecties-index.js`; de oude `/reflecties/{id}/log`-route blijft bestaan maar wordt door dit
+    scherm niet meer aangeroepen.
+- Lokaal geverifieerd: `php -l` schoon, server boot zonder fatale fouten op alle nieuwe HTML- en
+  API-routes (302 resp. 401 zoals verwacht zonder sessie). Volledige ingelogde klik-door-test nog te
+  doen door QA (zelfde beperking als bij Kennisbank hierboven).
+- **Nog niet meegenomen:** `/verbeterpunten/create`/`/{id}/edit` en `/reflecties/create`/`/{id}/edit`
+  staan nog op de oude server-rendered formulieren.
 
 ## Roadmap / openstaande verbeterpunten
 

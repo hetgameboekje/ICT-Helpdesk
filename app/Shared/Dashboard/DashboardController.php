@@ -5,6 +5,7 @@ namespace App\Shared\Dashboard;
 use App\Core\Controller;
 use App\Modules\Beheer\Models\LocatieModel;
 use App\Modules\CyberRisico\Models\CyberRisicoModel;
+use App\Modules\EmailVerwerking\Models\KbArticleDraftModel;
 use App\Modules\Medewerker\Models\MedewerkerModel;
 use App\Modules\Ticket\Models\TicketModel;
 use App\Modules\Tools\Models\PhonebookJobModel;
@@ -50,14 +51,26 @@ class DashboardController extends Controller
             'cyberrisicos' => ['lezen' => $this->hasRecht('cyberrisicos'), 'schrijven' => $this->hasRecht('cyberrisicos', 'schrijven')],
             'agenda' => ['lezen' => $this->hasRecht('agenda'), 'schrijven' => $this->hasRecht('agenda', 'schrijven')],
             'urenstaat' => ['lezen' => $this->hasRecht('urenstaat'), 'schrijven' => $this->hasRecht('urenstaat', 'schrijven')],
+            'kennisbank' => ['lezen' => $this->hasRecht('kennisbank')],
+            'printers' => ['lezen' => $this->hasRecht('printers')],
+            'email_verwerking' => ['lezen' => $this->hasRecht('email_verwerking')],
         ];
+
+        $naam = (string) ($this->currentUser()['naam'] ?? '');
+        $voornaam = trim(explode(' ', $naam)[0] ?? $naam) ?: $naam;
+        $uur = (int) date('G');
+        $dagdeel = $uur < 12 ? 'Goedemorgen' : ($uur < 18 ? 'Goedemiddag' : 'Goedenavond');
+
+        $draftTellingen = $mag['email_verwerking']['lezen'] ? KbArticleDraftModel::telPerStatus() : [];
 
         $this->render('Views/dashboard/index', [
             'activeModule' => 'dashboard',
-            'pageTitle' => 'Dashboard',
+            'pageTitle' => $voornaam !== '' ? "{$dagdeel}, {$voornaam} \u{1F44B}" : $dagdeel,
+            'breadcrumbs' => ['Werkplek'],
             'mag' => $mag,
             'stats' => [
                 'tickets_open' => $mag['tickets']['lezen'] ? TicketModel::countByStatus('open') : 0,
+                'tickets_wacht_op_info' => $mag['tickets']['lezen'] ? TicketModel::countByStatus('wacht_op_info') : 0,
                 'tickets_in_behandeling' => $mag['tickets']['lezen'] ? TicketModel::countByStatus('in_behandeling') : 0,
                 'verbeterpunten' => $mag['verbeterpunten']['lezen'] ? count(VerbeterpuntModel::all()) : 0,
                 'medewerkers' => $mag['medewerkers']['lezen'] ? count(MedewerkerModel::all()) : 0,
@@ -74,6 +87,7 @@ class DashboardController extends Controller
             'cyberPrioriteiten' => self::CYBER_PRIORITEIT_LABELS,
             'urenstaatLocaties' => $mag['urenstaat']['schrijven'] ? LocatieModel::visibleForUser((int) $this->currentUserId()) : [],
             'urenstaatOpen' => $mag['urenstaat']['schrijven'] ? UrenstaatModel::openForUser((int) $this->currentUserId()) : null,
+            'mailmindInReview' => ($draftTellingen['draft_created'] ?? 0) + ($draftTellingen['in_review'] ?? 0),
         ]);
     }
 
