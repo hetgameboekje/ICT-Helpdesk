@@ -11,3 +11,5 @@ automation/outlook-intake/config.ini
 scripts/automation/outlook-intake/config.example.ini
 scripts/automation/outlook-intake/config.example.ini
 .envlive
+.claude/worktrees/api-token-auth/
+.claude/worktrees/lovable-full-rollout/
