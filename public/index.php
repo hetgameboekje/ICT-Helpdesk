@@ -4,6 +4,7 @@ require __DIR__ . '/../app/bootstrap.php';
 
 use App\Api\V1\DevicesApiController;
 use App\Api\V1\KennisbankApiController;
+use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
 use App\Api\V1\VerbeterpuntenApiController;
@@ -200,6 +201,10 @@ $router->add('DELETE', '/api/v1/voorraad/{id}', [VoorraadApiController::class, '
 $router->get('/api/v1/apparaten', [DevicesApiController::class, 'index']);
 $router->get('/api/v1/apparaten/{id}', [DevicesApiController::class, 'show']);
 $router->add('DELETE', '/api/v1/apparaten/{id}', [DevicesApiController::class, 'destroy']);
+
+$router->get('/api/v1/printers', [PrintersApiController::class, 'index']);
+$router->get('/api/v1/printers/{id}', [PrintersApiController::class, 'show']);
+$router->add('DELETE', '/api/v1/printers/{id}', [PrintersApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);

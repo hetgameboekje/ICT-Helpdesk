@@ -2,23 +2,23 @@
 
 namespace App\Api\V1;
 
-use App\Modules\Device\DeviceService;
+use App\Modules\Printer\PrinterService;
 
-/** Presentation/API-laag voor apparaten — /api/v1/apparaten*. Businesslogica in DeviceService. */
-class DevicesApiController extends ApiController
+/** Presentation/API-laag voor printers — /api/v1/printers*. Businesslogica in PrinterService. */
+class PrintersApiController extends ApiController
 {
-    private DeviceService $service;
+    private PrinterService $service;
 
     public function __construct()
     {
-        $this->service = new DeviceService();
+        $this->service = new PrinterService();
     }
 
     public function index(): void
     {
         $this->handle(function () {
             $user = $this->requireAuth();
-            $this->requirePermission($user, 'apparaten', 'lezen');
+            $this->requirePermission($user, 'printers', 'lezen');
 
             $result = $this->service->list($_GET);
             $this->success($result['items'], [
@@ -33,7 +33,7 @@ class DevicesApiController extends ApiController
     {
         $this->handle(function () use ($id) {
             $user = $this->requireAuth();
-            $this->requirePermission($user, 'apparaten', 'lezen');
+            $this->requirePermission($user, 'printers', 'lezen');
 
             $this->success($this->service->find($id));
         });
@@ -43,7 +43,7 @@ class DevicesApiController extends ApiController
     {
         $this->handle(function () use ($id) {
             $user = $this->requireAuth();
-            $this->requirePermission($user, 'apparaten', 'verwijderen');
+            $this->requirePermission($user, 'printers', 'verwijderen');
             $this->requireCsrf();
 
             $this->service->delete($id);

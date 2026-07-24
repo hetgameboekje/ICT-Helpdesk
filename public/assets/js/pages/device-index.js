@@ -84,17 +84,12 @@ function debounce(fn, ms) {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-function renderKpis(items) {
-    const totaal = items.length;
-    const gekoppeld = items.filter((d) => d.medewerker_id).length;
-    const softwareTotaal = items.reduce((s, d) => s + parseInt(d.software_aantal || 0, 10), 0);
-    const zonderImport = items.filter((d) => !d.laatst_geimporteerd_op).length;
-
+function renderKpis(stats) {
     const cards = [
-        { label: 'Apparaten', value: totaal, icon: 'bi-laptop', tone: 'behandeling' },
-        { label: 'Gekoppeld aan medewerker', value: gekoppeld, icon: 'bi-person-check', tone: 'opgelost' },
-        { label: 'Software-items totaal', value: softwareTotaal, icon: 'bi-app-indicator', tone: 'open' },
-        { label: 'Nog geen import', value: zonderImport, icon: 'bi-exclamation-triangle', tone: 'wachtend' },
+        { label: 'Apparaten', value: stats.totaal, icon: 'bi-laptop', tone: 'behandeling' },
+        { label: 'Gekoppeld aan medewerker', value: stats.gekoppeld, icon: 'bi-person-check', tone: 'opgelost' },
+        { label: 'Software-items totaal', value: stats.softwareTotaal, icon: 'bi-app-indicator', tone: 'open' },
+        { label: 'Nog geen import', value: stats.zonderImport, icon: 'bi-exclamation-triangle', tone: 'wachtend' },
     ];
     document.getElementById('devKpis').innerHTML = cards.map((c) => `
         <div class="kpi-card">
@@ -207,7 +202,7 @@ async function load() {
 
     try {
         const res = await api.get(apiQuery());
-        renderKpis(res.data);
+        renderKpis(res.meta.stats);
         renderList(res.data);
         if (selectedId) {
             loadDetail(selectedId);

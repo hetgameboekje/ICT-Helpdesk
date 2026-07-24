@@ -36,6 +36,12 @@ class DeviceService
                 'total' => $pagination['total'],
             ],
             'filterOptions' => ['medewerker_naam' => array_combine($namen, $namen)],
+            'stats' => [
+                'totaal' => count($allItems),
+                'gekoppeld' => count(array_filter($allItems, fn (array $d) => !empty($d['medewerker_id']))),
+                'softwareTotaal' => array_sum(array_map(fn (array $d) => (int) $d['software_aantal'], $allItems)),
+                'zonderImport' => count(array_filter($allItems, fn (array $d) => empty($d['laatst_geimporteerd_op']))),
+            ],
         ];
     }
 
