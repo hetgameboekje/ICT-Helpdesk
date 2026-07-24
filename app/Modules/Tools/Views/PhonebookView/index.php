@@ -1,6 +1,7 @@
 <?php
 /** @var array $jobs */
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
+require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
 
 use App\Core\Table;
 
@@ -11,6 +12,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 $statusLabels = ['queued' => 'In wachtrij', 'processing' => 'Bezig', 'done' => 'Gereed', 'error' => 'Fout'];
 $statusBadgeClass = ['queued' => 'badge-wacht_op_info', 'processing' => 'badge-in_behandeling', 'done' => 'badge-afgehandeld', 'error' => 'badge-afgewezen'];
 ?>
+<?= toolsTabs('telefoonlijst') ?>
 <div class="page-header">
   <div style="display:flex;align-items:center;gap:12px">
     <a class="btn" href="/tools" style="padding:6px 10px">&larr;</a>
