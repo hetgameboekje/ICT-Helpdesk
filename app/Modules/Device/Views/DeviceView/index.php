@@ -1,17 +1,11 @@
 <?php
-/** @var array $items */
-/** @var array $pagination */
-/** @var array $filterOptions */
-/** @var string $search */
-/** @var string|null $sort */
-/** @var string $dir */
-require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
-
-use App\Core\Table;
-
-$flashSuccess = $_SESSION['flash_success'] ?? null;
-$flashError = $_SESSION['flash_error'] ?? null;
-unset($_SESSION['flash_success'], $_SESSION['flash_error']);
+/**
+ * Shell-view: zie Views/KennisbankView/index.php voor uitleg van het patroon. De CSV-import-knoppen
+ * ("+ Lokaal"/"+ Globaal", zie DeviceController::store()/softwareImport()) blijven hier als gewone
+ * multipart-formulieren staan — bestandsupload hoort niet in de JSON-API-scope (zelfde afweging als
+ * tickets-export/import). public/assets/js/pages/device-index.js bouwt de lijst/detail-split-view
+ * eronder, o.b.v. src/routes/modules.device.tsx.
+ */
 ?>
 <div class="page-header">
   <div class="page-title">Applicaties</div>
@@ -19,13 +13,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
     <a class="btn" href="/apparaten/software">Software-inventaris</a>
     <a href="/apparaten/create" style="font-size:12px;color:var(--color-text-tertiary)">Nieuw apparaat handmatig toevoegen</a>
     <button type="button" class="btn" id="lokaal-import-knop">+ Lokaal</button>
-    <button type="button" class="btn btn-primary" id="globaal-import-knop">+ Globaal</button>
+    <button type="button" class="btn btn-accent" id="globaal-import-knop">+ Globaal</button>
   </div>
 </div>
 
-<!-- Verborgen forms voor de "+ Globaal"/"+ Lokaal"-knoppen: klikken opent direct de bestandsverkenner
-     (input.click()) en zodra er een bestand gekozen is, wordt automatisch geüpload — geen tussenstap
-     met een zichtbaar uploadformulier meer nodig. -->
 <form method="post" action="/apparaten/software-import" enctype="multipart/form-data" id="globaal-import-form" style="display:none">
   <input type="file" name="bestand" accept=".csv" id="globaal-import-bestand">
 </form>
@@ -33,36 +24,8 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
   <input type="file" name="bestand" accept=".csv" id="lokaal-import-bestand">
 </form>
 
-<?php if ($flashSuccess): ?>
-  <div class="alert alert-success"><?= htmlspecialchars($flashSuccess) ?></div>
-<?php endif; ?>
-<?php if ($flashError): ?>
-  <div class="alert alert-error"><?= htmlspecialchars($flashError) ?></div>
-<?php endif; ?>
-
-<form method="get" action="/apparaten" class="filters" style="margin-bottom:14px">
-  <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Zoeken op naam...">
-  <?= filterSelect('medewerker_naam', 'Alle medewerkers', $filterOptions['medewerker_naam']) ?>
-  <button class="btn btn-primary" type="submit">Zoeken</button>
-</form>
-
-<?= activeFilterChip('apparaten') ?>
-
-<div class="card">
-  <?php
-  $table = (new Table())
-      ->emptyText('Geen apparaten gevonden.')
-      ->sortState($sort, $dir)
-      ->rowUrl(fn (array $i) => "/apparaten/{$i['id']}")
-      ->column('naam', 'Naam', fn (array $i) => htmlspecialchars($i['naam']))
-      ->column('medewerker_naam', 'Medewerker', fn (array $i) => htmlspecialchars($i['medewerker_naam'] ?? '—'))
-      ->column('software_aantal', 'Software', fn (array $i) => (int) $i['software_aantal'], ['class' => 'col-1'])
-      ->column('laatst_geimporteerd_op', 'Laatst geïmporteerd', fn (array $i) => formatDatumTijd($i['laatst_geimporteerd_op']), ['class' => 'col-2'])
-      ->rows($items);
-  echo $table->render();
-  ?>
-  <?= paginationLinks($pagination) ?>
-</div>
+<div id="device-app" data-page="device-index"></div>
+<script type="module" src="/assets/js/pages/device-index.js"></script>
 
 <script>
 (function () {
@@ -72,13 +35,9 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
         var form = document.getElementById(formId);
         if (!knop || !bestand || !form) return;
 
-        knop.addEventListener('click', function () {
-            bestand.click();
-        });
+        knop.addEventListener('click', function () { bestand.click(); });
         bestand.addEventListener('change', function () {
-            if (bestand.files.length > 0) {
-                form.submit();
-            }
+            if (bestand.files.length > 0) { form.submit(); }
         });
     }
 
