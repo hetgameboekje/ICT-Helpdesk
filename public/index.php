@@ -8,6 +8,7 @@ use App\Api\V1\KennisbankApiController;
 use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
+use App\Api\V1\UitgiftenApiController;
 use App\Api\V1\VerbeterpuntenApiController;
 use App\Api\V1\VoorraadApiController;
 use App\Core\Router;
@@ -211,6 +212,10 @@ $router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class,
 $router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
 $router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
 $router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
+
+$router->get('/api/v1/uitgiften', [UitgiftenApiController::class, 'index']);
+$router->get('/api/v1/uitgiften/{id}', [UitgiftenApiController::class, 'show']);
+$router->post('/api/v1/uitgiften/{id}/retour', [UitgiftenApiController::class, 'retour']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
