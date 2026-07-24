@@ -211,6 +211,34 @@ zonder page reload. CSRF-check getest (419 zonder token, 201 met), 401/404/422 g
 controller + JS-pagina + shell-view). De oude server-rendered routes per module blijven intact totdat
 die module is overgezet — geen big-bang-migratie.
 
+**Besluit (2026-07-24) — methodiek wordt "echte Lovable-conversie", niet handmatig natekenen:**
+vanaf nu wordt de daadwerkelijke Lovable-broncode (`docs/design/*.tsx`, opgehaald via de Lovable MCP
+`read_file`-tool, project `4675b36f-276e-4fc5-9606-d83a98f9d801`) 1-op-1 omgezet naar de platte
+HTML/CSS/vanilla-JS-pagina's die de `/api/v1/*`-laag aanroepen, in plaats van het scherm met de hand
+na te bouwen op basis van het visuele resultaat. Uitleveringsmodel blijft de dunne PHP-shell (zoals nu
+al bij Tickets): PHP doet alleen sessie-gate + gedeelde layout-include, de rest van de pagina is
+statische markup + JS. Reden om niet voor volledig losse `.html`-bestanden zonder PHP te kiezen: dat
+zou laag-duplicatie van de sidebar/layout betekenen zonder build-stap, en de sessie-gate zou dan
+client-side (na een 401) moeten in plaats van server-side vóór de eerste render.
+
+**Waarom nu, en met het oog op een toekomstige Android-app:** de `/api/v1/*`-laag is bewust
+framework-/frontend-onafhankelijk (JSON in/uit, geen HTML). Een native app kan dezelfde endpoints
+hergebruiken, maar niet de huidige auth: `ApiController::requireAuth()` leest nu uitsluitend de
+sessiecookie (`$_SESSION['user']`), wat alleen werkt voor een browser same-origin. Zodra een
+Android-app daadwerkelijk gebouwd wordt, moet daar een tweede auth-modus (bv. bearer-token, uitgegeven
+bij inloggen) naast komen — nog niet gebouwd, wel een randvoorwaarde om `requireAuth()` op dat moment
+uitbreidbaar te houden i.p.v. hardcoded aan de sessiecookie.
+
+**Kennisbank (in uitvoering, stap 3 van de rollout hierboven):** `KennisbankService` +
+`Api\V1\KennisbankApiController` zijn toegevoegd naar het Tickets-patroon (`GET/POST /api/v1/kennisbank`,
+`GET/PUT/DELETE /api/v1/kennisbank/{id}`), lokaal gecontroleerd (401 zonder sessie, envelope-vorm
+klopt). De categorieën/subcategorieën/tags-lookups (`/kennisbank/categorieen` etc.) blijven voorlopig
+op de oude server-rendered route — die zijn nog nodig voor de create/edit-formulieren en worden
+meegenomen zodra de frontend van deze module wordt omgezet. **Nog te doen:** thin-shell views
+(`index.php`/`show.php` leegmaken zoals bij Tickets), en de JS-pagina's die de daadwerkelijke
+`docs/design/modules.kennisbank.tsx` (+ `mailmind.tsx` voor de EmailVerwerking-koppeling) omzetten
+naar vanilla JS tegen de nieuwe endpoints.
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

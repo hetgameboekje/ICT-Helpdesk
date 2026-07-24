@@ -5,7 +5,6 @@ namespace App\Modules\Kennisbank;
 use App\Core\CrudController;
 use App\Core\TableQuery;
 use App\Modules\EmailVerwerking\Models\KbArticleDraftModel;
-use App\Modules\Kennisbank\Models\KennisbankLogModel;
 use App\Modules\Kennisbank\Models\KennisbankModel;
 
 class KennisbankController extends CrudController
@@ -15,6 +14,7 @@ class KennisbankController extends CrudController
     protected string $routeBase = 'kennisbank';
     protected string $activeModule = 'kennisbank';
     protected string $pageTitle = 'Kennisbank';
+    protected array $breadcrumbs = ['Support'];
 
     /**
      * Override van CrudController::index(): 'tag' wordt al door applyDefaultFilters() verwerkt.
@@ -47,17 +47,14 @@ class KennisbankController extends CrudController
     public function show(int $id): void
     {
         $this->requirePermission($this->activeModule, 'lezen');
-        $item = KennisbankModel::findWithRelations($id);
 
-        if ($item === null) {
+        if (KennisbankModel::find($id) === null) {
             http_response_code(404);
             echo 'Niet gevonden.';
             return;
         }
 
         $this->render("{$this->viewDir}/show", [
-            'item' => $item,
-            'logs' => KennisbankLogModel::forArtikel($id),
             'activeModule' => $this->activeModule,
             'pageTitle' => $this->pageTitle,
             'routeBase' => $this->routeBase,

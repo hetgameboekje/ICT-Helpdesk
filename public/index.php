@@ -2,6 +2,7 @@
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Api\V1\KennisbankApiController;
 use App\Api\V1\TicketsApiController;
 use App\Core\Router;
 use App\Modules\Account\AccountController;
@@ -165,6 +166,12 @@ $router->post('/api/v1/tickets/{id}/log', [TicketsApiController::class, 'addLog'
 $router->post('/api/v1/tickets/{id}/tijd', [TicketsApiController::class, 'addTijd']);
 $router->post('/api/v1/tickets/{id}/kennisbank/{id}', [TicketsApiController::class, 'kennisbankKoppel']);
 $router->add('DELETE', '/api/v1/tickets/{id}/kennisbank/{id}', [TicketsApiController::class, 'kennisbankOntkoppel']);
+
+$router->get('/api/v1/kennisbank', [KennisbankApiController::class, 'index']);
+$router->post('/api/v1/kennisbank', [KennisbankApiController::class, 'store']);
+$router->get('/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'show']);
+$router->add('PUT', '/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'update']);
+$router->add('DELETE', '/api/v1/kennisbank/{id}', [KennisbankApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);

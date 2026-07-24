@@ -23,6 +23,23 @@ class KennisbankModel extends Model
         return Database::pdo()->query(self::SELECT . ' ORDER BY k.created_at DESC')->fetchAll();
     }
 
+    /** Zelfde regel als TicketModel::alleenGewijzigdeVelden(): lege/ongewijzigde velden niet meesturen in een update. */
+    public static function alleenGewijzigdeVelden(array $huidig, array $nieuw): array
+    {
+        foreach ($nieuw as $veld => $waarde) {
+            if ($waarde === '' || $waarde === null) {
+                unset($nieuw[$veld]);
+                continue;
+            }
+
+            if (array_key_exists($veld, $huidig) && (string) $huidig[$veld] === (string) $waarde) {
+                unset($nieuw[$veld]);
+            }
+        }
+
+        return $nieuw;
+    }
+
     public static function findWithRelations(int $id): ?array
     {
         $stmt = Database::pdo()->prepare(self::SELECT . ' AND k.id = ?');

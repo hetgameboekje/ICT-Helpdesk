@@ -20,6 +20,20 @@ class TicketKennisbankModel
         return $stmt->fetchAll();
     }
 
+    /** Omgekeerde richting van gekoppeld(): tickets die aan een kennisbankartikel gekoppeld zijn. */
+    public static function gekoppeldeTicketsVoorArtikel(int $artikelId): array
+    {
+        $stmt = Database::pdo()->prepare("
+            SELECT t.id, t.titel, t.status
+            FROM ticket_kennisbank_artikelen tka
+            JOIN tickets t ON t.id = tka.ticket_id
+            WHERE tka.kennisbank_artikel_id = ? AND t.deleted_at IS NULL
+            ORDER BY tka.created_at ASC
+        ");
+        $stmt->execute([$artikelId]);
+        return $stmt->fetchAll();
+    }
+
     /** Artikelen uit dezelfde categorie als het ticket, die nog niet gekoppeld zijn. */
     public static function suggesties(int $ticketId, string $categorie, int $limiet = 5): array
     {
