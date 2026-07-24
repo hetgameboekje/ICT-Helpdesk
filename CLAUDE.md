@@ -116,13 +116,52 @@ CyberRisico, Uitgifte) bestaat de PHP-variant van dit patroon al via `sortLink()
 **Rollout plan (see the plan file above for full detail; step by step, verify manually after each
 since there's no test suite):**
 0. ✅ Done — tokens/typography replaced in `public/assets/css/app.css`, fonts swapped in both layouts.
-1. Sidebar navigation (replaces the top-navbar in `app/Views/layouts/app.php`) + Dashboard/Overview.
-2. Ticket module (list + detail) — the reference pattern copied into later modules.
-3. Kennisbank + EmailVerwerking/MailMind.
-4. Verbeterpunt, Reflectie.
-5. Voorraad, Device, Printer, HardwareUitgave, Uitgifte, CyberRisico.
-6. Medewerker, Agenda, Account.
-7. Beheer, Tools, Script, Schijfgebruik.
+1. ✅ Done — sidebar navigation + Dashboard/Overview.
+2. ✅ Done — Ticket module (list + detail), the reference pattern copied into later modules.
+3. ✅ Done — Kennisbank (full 3-laags) + EmailVerwerking/MailMind (dashboard already matched the
+   mockup from an earlier pass — pipeline grid, KPI banner, latest-concept preview).
+4. ✅ Done — Verbeterpunt, Reflectie (full 3-laags: Service + `Api\V1\*Controller` + split-view JS).
+5. ✅ Done — Voorraad, Device, Printer, HardwareUitgave, Uitgifte, CyberRisico (full 3-laags each).
+6. ✅ Done — Medewerker (3-laags), Agenda (sidebar added to the existing FullCalendar page, not a
+   3-laags rebuild — see below), Account (restyled, no 3-laags needed — singleton settings page).
+7. ✅ Done — Beheer, Tools (shared tab-bar navigation across existing pages, not a 3-laags rebuild
+   — see below), Script, Schijfgebruik (full 3-laags).
+
+**Fases 4–7 samengevat (2026-07-25):** alle resterende modules uit het rollout-plan zijn nu
+omgezet. De meeste volgden het Tickets/Kennisbank-patroon 1-op-1 (Service + `Api\V1\*Controller`
++ thin-shell views + split-view JS-pagina, opgehaald via de Lovable MCP tegen elke
+`src/routes/modules.<naam>.tsx`): Verbeterpunt, Reflectie, Voorraad, Device, Printer,
+HardwareUitgave, Uitgifte, CyberRisico, Medewerker, Script, Schijfgebruik (deze laatste alleen de
+lijst — de detailpagina met medewerker-koppeling blijft server-rendered).
+
+Een aantal modules week bewust af van dat patroon omdat het scherm zelf, of de onderliggende data,
+niet 1-op-1 aansloot:
+- **Agenda**: draait al op een volwaardige FullCalendar-integratie (drag/resize/click-to-create,
+  maand/week/dag) die functioneel verder gaat dan Lovable's statische week-grid-mockup —
+  vervangen zou functionaliteit kosten. In plaats daarvan is alleen de ontbrekende sidebar
+  toegevoegd ("Team vandaag" met een echte in-behandeling-telling per medewerker via de nieuwe
+  `MedewerkerModel::alleMetInBehandelingTellingen()`, en een legenda met de bestaande event-kleuren).
+- **Account**: singleton-pagina (geen lijst), dus geen Service/API-laag — alleen de bestaande
+  profiel/bewerken-views herstyled naar Lovable's kaartsecties. 2FA/actieve sessies/notificatie-
+  voorkeuren uit de mockup bestaan niet in dit systeem (sessie-cookie-auth zonder MFA) en zijn
+  weggelaten.
+- **Beheer en Tools**: de mockups bundelen meerdere features als client-side tabs op één scherm
+  (Gebruikers&rechten/API-sleutels/E-mailqueue/Logs, resp. Telefoonlijst/Handtekening/Herstart-
+  herinneringen). Dit waren hier al losse, volledig werkende server-rendered pagina's — samenvoegen
+  tot één client-side app zou risico op regressie geven. Opgelost met gedeelde tab-navigatie-
+  partials (`app/Views/partials/beheer-tabs.php`, `tools-tabs.php`) die dezelfde tabs tonen als
+  gewone paginalinks tussen de bestaande pagina's, plus een extra tab voor het echte onderdeel
+  zonder Lovable-tegenhanger (Systeembeheer resp. Installatie).
+
+Bewuste datamodel-afwijkingen (mockdata paste niet op het echte schema — zie de code-comments
+bovenaan elke `*-index.js` voor details): Voorraad (per-stuk barcode/serienummer i.p.v. aantal/
+minimum — "Bijboeken/Afboeken" vervangen door een statuswijziging), Device (fleet-inventarisatie
+o.b.v. CSV-import i.p.v. live monitoring — geen online-status/Herstart/Wipe), Printer (driver/
+netwerk-registratie i.p.v. tonerniveaus/printjobs — wel het bestaande installatiecommando),
+HardwareUitgave (aankoopaanvraag-tracker, niet het "uitgifte met retour"-concept dat al apart
+bestaat als `Uitgifte`), CyberRisico (prioriteit-enum i.p.v. kans×impact-risicomatrix — geen scores
+in het datamodel), Medewerker (status kent geen "verlof", alleen actief/inactief), Script (geen
+uitvoeringsgeschiedenis — kopieer-en-plak-bibliotheek, geen "Uitvoeren"-knop).
 
 Each step is a visual/structural pass only: keep existing routes, controllers, Dutch UI text, and
 behavior unchanged unless a bug is found along the way. Click through the affected module locally
