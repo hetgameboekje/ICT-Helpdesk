@@ -46,7 +46,7 @@ class HardwareUitgavenApiController extends ApiController
             $this->requirePermission($user, 'hardware', 'schrijven');
             $this->requireCsrf();
 
-            $this->success($this->service->setStatus($id, (string) ($this->jsonBody()['status'] ?? '')));
+            $this->success($this->service->setStatus($id, (string) ($this->jsonBody()['status'] ?? ''), $user));
         });
     }
 

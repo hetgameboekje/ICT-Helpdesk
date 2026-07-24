@@ -502,6 +502,52 @@ Lokaal geverifieerd: `php -l` schoon op alle betrokken bestanden, server boot zo
 de nieuwe HTML- en API-routes. Volledige ingelogde klik-door-test nog te doen door QA (zelfde
 beperking als de eerdere modules — geen lokale DB in deze omgeving).
 
+### Logboek/historie-patroon (submenu + sheet, i.p.v. inline in het hoofddetailpaneel)
+
+Bij de Lovable-conversie van Device/CyberRisico/Printer/Voorraad/Uitgifte/HardwareUitgave ontbrak
+tijdregistratie/statuslogboek in de detailpanelen omdat de Lovable-mockup dat niet toont. Besluit:
+dit blijft weg uit het hoofdpaneel (dat blijft 1-op-1 Lovable-strak) maar moet wél bereikbaar zijn
+via een "..."-actiemenu (dropdown) dat een uitklap-sheet vanaf de rechterkant opent. Herbruikbare
+implementatie: `public/assets/js/ui/panel-menu.js` (`actionMenuHtml()`/`wireActionMenu()`/
+`openSheet()`) + CSS in `public/assets/css/app.css` (`.action-menu*`, `.app-sheet*`, en een losse
+`.hover-reveal`-klasse voor een hover-only icoon/knop in een rij, voor later gebruik). Nieuwe
+modules die dit patroon nodig hebben, hergebruiken dezelfde drie functies i.p.v. het opnieuw te
+bouwen.
+
+Per onderzochte module bleek de aanname "de data bestaat nog, alleen de UI toont het niet" niet voor
+alle zes te kloppen — gecontroleerd tegen `database/xml/*.xml` en git-historie (geen enkel bestand
+voor een `device_logs`/`printer_logs`/`voorraad_logs`/`uitgifte_logs`-tabel heeft ooit bestaan):
+
+- **CyberRisico**: had al een echt logboek (`cyberrisico_logs`, ongewijzigd backend) dat nog steeds
+  permanent zichtbaar in het hoofdpaneel stond. Verplaatst naar het "..."-menu ("Logboek bekijken")
+  + sheet — `public/assets/js/pages/cyberrisicos-index.js`.
+- **Voorraad**: had al de echte uitgiftehistorie (`uitgiften` gekoppeld aan `voorraad_items`, via
+  `VoorraadItemModel`) permanent zichtbaar. Zelfde verplaatsing naar het actiemenu —
+  `public/assets/js/pages/voorraad-index.js`.
+- **HardwareUitgave**: had helemaal geen historie — alleen een `status`-veld zonder audit trail. Dit
+  is de enige van de zes waar een "statuslogboek" letterlijk ontbrak, dus hier is een nieuwe, echte
+  tabel toegevoegd: `hardware_uitgave_logs` (`database/xml/hardware_uitgave_logs.xml`,
+  `HardwareUitgaveLogModel`), automatisch gevuld door `HardwareUitgaveService::setStatus()` bij elke
+  echte statusovergang (geen handmatige "opmerking toevoegen"-vorm, want er is geen vrije-tekstlog
+  zoals bij Cyberrisico/Tickets — alleen status-van/status-naar/wie/wanneer). Zichtbaar via
+  hetzelfde "..."-menu ("Statushistorie bekijken") in `public/assets/js/pages/hardware-uitgave-index.js`.
+- **Device, Printer, Uitgifte**: geen wijziging. Devices/Printers zijn read-only inventarisitems
+  zonder statusworkflow (alleen `created_at`/`updated_at`, al zichtbaar waar relevant, bv. "laatst
+  geïmporteerd" bij Device); een enkele Uitgifte is zelf al een individuele transactie (uitgifte-/
+  retourdatum, opmerkingen) zonder onderliggende historie om te verbergen. Er is bewust geen
+  generieke logtabel voor deze drie gebouwd zonder een echte behoefte/databron — dat zou nepdata of
+  een niet-werkende knop opleveren, wat expliciet niet de bedoeling is.
+
+Lokaal geverifieerd (draaiende lokale database): `php -l` schoon op alle gewijzigde/nieuwe PHP-
+bestanden, `php database/parse.php` regenereert `hardware_uitgave_logs` correct in
+`database/.parsed/schema.sql`, en een end-to-end call via curl (inloggen, `PUT
+/api/v1/hardware-uitgaven/{id}/status`) bevestigt dat er automatisch een logregel wordt weggeschreven
+en teruggegeven in de volgende `GET /api/v1/hardware-uitgaven/{id}`. CyberRisico/Voorraad-lijst- en
+detail-endpoints reageren ongewijzigd 200 OK. Geen browser-klik-door-test gedaan (geen interactieve
+sessie beschikbaar in deze omgeving) — de dropdown/sheet-interactie zelf (openen/sluiten/click-
+outside) is dus alleen statisch gecontroleerd (JS-haakjes-balans, geen `node`/linter beschikbaar om
+te transpilen), niet in een echte browser geklikt.
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

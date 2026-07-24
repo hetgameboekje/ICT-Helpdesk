@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table name="hardware_uitgave_logs" engine="InnoDB">
+  <columns>
+    <column name="id" type="INT" primary="true" auto_increment="true"/>
+    <column name="hardware_uitgave_id" type="INT" nullable="false" references="hardware_uitgaven.id" on_delete="CASCADE"/>
+    <column name="user_id" type="INT" references="users.id"/>
+    <column name="status_van" type="VARCHAR" length="30"/>
+    <column name="status_naar" type="VARCHAR" length="30" nullable="false"/>
+    <column name="created_at" type="TIMESTAMP" nullable="false" default="CURRENT_TIMESTAMP"/>
+  </columns>
+</table>

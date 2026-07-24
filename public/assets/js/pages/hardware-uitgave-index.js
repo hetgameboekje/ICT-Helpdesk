@@ -1,4 +1,5 @@
 import { api, ApiError } from '/assets/js/api/client.js';
+import { actionMenuHtml, wireActionMenu, openSheet } from '/assets/js/ui/panel-menu.js';
 
 /**
  * Hardware-uitgaven: lijst + detail in één split-view scherm, o.b.v.
@@ -159,6 +160,7 @@ function flash(message) {
 }
 
 let detailItem = null;
+let detailLogs = [];
 
 async function loadDetail(id) {
     const detail = document.getElementById('hwDetail');
@@ -167,6 +169,7 @@ async function loadDetail(id) {
     try {
         const res = await api.get(`/api/v1/hardware-uitgaven/${id}`);
         detailItem = res.data.item;
+        detailLogs = res.data.logs || [];
         renderDetail();
     } catch (e) {
         const message = e instanceof ApiError ? e.message : 'Kon uitgave niet laden.';
@@ -174,11 +177,30 @@ async function loadDetail(id) {
     }
 }
 
+function statushistorieHtml(logs) {
+    return logs.length === 0
+        ? '<p style="font-size:12px;color:var(--color-text-tertiary)">Nog geen statuswijzigingen.</p>'
+        : `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+            ${logs.map((l) => `
+                <li style="font-size:12.5px;border-bottom:0.5px solid var(--color-border-tertiary);padding-bottom:8px">
+                    <span class="mono" style="font-size:10px;color:var(--color-text-tertiary)">${esc(String(l.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+                    ${l.user_naam ? ` <span style="font-size:11px;color:var(--color-text-tertiary)">&middot; ${esc(l.user_naam)}</span>` : ''}
+                    <div style="margin-top:2px">
+                        ${l.status_van ? `${statusBadge(l.status_van)} &rarr; ` : ''}${statusBadge(l.status_naar)}
+                    </div>
+                </li>
+            `).join('')}
+           </ul>`;
+}
+
 function renderDetail() {
     const item = detailItem;
 
     document.getElementById('hwDetail').innerHTML = `
-        <div class="mono" style="font-size:11px;color:var(--color-text-tertiary)">#${item.id} &middot; ${formatDatum(item.aankoopdatum)}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div class="mono" style="font-size:11px;color:var(--color-text-tertiary)">#${item.id} &middot; ${formatDatum(item.aankoopdatum)}</div>
+            ${actionMenuHtml('hw-detail')}
+        </div>
         <div style="font-size:16px;font-weight:600;margin-top:4px">${esc(item.omschrijving)}</div>
         <div style="margin-top:6px">${statusBadge(item.status)}</div>
 
@@ -203,11 +225,20 @@ function renderDetail() {
         </div>
     `;
 
+    wireActionMenu(document.getElementById('hwDetail'), 'hw-detail', [
+        {
+            label: `Statushistorie bekijken (${detailLogs.length})`,
+            icon: 'bi-clock-history',
+            onClick: () => openSheet('Statushistorie', statushistorieHtml(detailLogs)),
+        },
+    ]);
+
     document.querySelectorAll('.status-picker button[data-status]').forEach((btn) => {
         btn.addEventListener('click', async () => {
             try {
                 const res = await api.put(`/api/v1/hardware-uitgaven/${item.id}/status`, { status: btn.dataset.status });
                 detailItem = res.data.item;
+                detailLogs = res.data.logs || [];
                 renderDetail();
                 renderList(currentItems.map((h) => (h.id === detailItem.id ? { ...h, status: detailItem.status } : h)));
             } catch (e) {

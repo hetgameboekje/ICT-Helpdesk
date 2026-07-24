@@ -1,5 +1,6 @@
 import { api, ApiError } from '/assets/js/api/client.js';
 import { sortableHeaderHtml, bindSortableHeaders } from '/assets/js/table-sort.js';
+import { actionMenuHtml, wireActionMenu, openSheet } from '/assets/js/ui/panel-menu.js';
 
 /**
  * Voorraad: lijst + item in één split-view scherm, zoals in het Lovable-ontwerp
@@ -195,14 +196,30 @@ async function loadDetail(id) {
     }
 }
 
+function uitgiftehistorieHtml(uitgiften) {
+    return uitgiften.length === 0
+        ? '<p style="font-size:12px;color:var(--color-text-tertiary)">Nog nooit uitgegeven.</p>'
+        : `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+            ${uitgiften.map((u) => `
+                <li style="font-size:12.5px;border-bottom:0.5px solid var(--color-border-tertiary);padding-bottom:8px">
+                    <a href="/uitgiften/${u.id}" style="font-weight:500">${esc(u.medewerker_naam)}</a>
+                    <div style="color:var(--color-text-tertiary);margin-top:2px">${esc(String(u.uitgegeven_op || '').slice(0, 10))}${u.teruggegeven_op ? ' &rarr; retour ' + esc(String(u.teruggegeven_op).slice(0, 10)) : ' (nog in gebruik)'}</div>
+                </li>
+            `).join('')}
+           </ul>`;
+}
+
 function renderDetail(item, uitgiften) {
     document.getElementById('vrDetail').innerHTML = `
-        <div style="margin-bottom:12px">
-            <div class="mono" style="font-size:11px;color:var(--color-text-tertiary)">${esc(item.barcode)}</div>
-            <div style="font-size:16px;font-weight:600;margin-top:2px">${esc(item.type_naam || '—')}${item.variant ? ' (' + esc(item.variant) + ')' : ''}</div>
-            <div style="margin-top:6px">${statusBadge(item.status)}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div>
+                <div class="mono" style="font-size:11px;color:var(--color-text-tertiary)">${esc(item.barcode)}</div>
+                <div style="font-size:16px;font-weight:600;margin-top:2px">${esc(item.type_naam || '—')}${item.variant ? ' (' + esc(item.variant) + ')' : ''}</div>
+                <div style="margin-top:6px">${statusBadge(item.status)}</div>
+            </div>
+            ${actionMenuHtml('vr-detail')}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;border-top:0.5px solid var(--color-border-tertiary);padding-top:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;border-top:0.5px solid var(--color-border-tertiary);margin-top:12px;padding-top:12px">
             <div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Locatie</div><div>${esc(item.locatie || '—')}</div></div>
             <div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Serienummer</div><div class="mono">${esc(item.serienummer || '—')}</div></div>
             <div style="grid-column:span 2"><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Opmerking</div><div>${esc(item.opmerking || '—')}</div></div>
@@ -211,20 +228,15 @@ function renderDetail(item, uitgiften) {
             <a class="btn btn-ghost" href="/voorraad/${item.id}/edit">Bewerken</a>
             <a class="btn btn-ghost" href="/voorraad/${item.id}/barcode" target="_blank">Barcode printen</a>
         </div>
-        <div style="border-top:0.5px solid var(--color-border-tertiary);margin-top:16px;padding-top:16px">
-            <h3 style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-tertiary);margin:0 0 8px">Uitgiftehistorie</h3>
-            ${uitgiften.length === 0
-                ? '<p style="font-size:12px;color:var(--color-text-tertiary)">Nog nooit uitgegeven.</p>'
-                : `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
-                    ${uitgiften.map((u) => `
-                        <li style="font-size:12.5px">
-                            <a href="/uitgiften/${u.id}" style="font-weight:500">${esc(u.medewerker_naam)}</a>
-                            <span style="color:var(--color-text-tertiary)"> &middot; ${esc(String(u.uitgegeven_op || '').slice(0, 10))}${u.teruggegeven_op ? ' &rarr; retour ' + esc(String(u.teruggegeven_op).slice(0, 10)) : ' (nog in gebruik)'}</span>
-                        </li>
-                    `).join('')}
-                   </ul>`}
-        </div>
     `;
+
+    wireActionMenu(document.getElementById('vrDetail'), 'vr-detail', [
+        {
+            label: `Uitgiftehistorie bekijken (${uitgiften.length})`,
+            icon: 'bi-clock-history',
+            onClick: () => openSheet('Uitgiftehistorie', uitgiftehistorieHtml(uitgiften)),
+        },
+    ]);
 }
 
 async function load() {

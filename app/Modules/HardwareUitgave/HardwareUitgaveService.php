@@ -5,6 +5,7 @@ namespace App\Modules\HardwareUitgave;
 use App\Core\Exceptions\NotFoundException;
 use App\Core\Exceptions\ValidationException;
 use App\Core\TableQuery;
+use App\Modules\HardwareUitgave\Models\HardwareUitgaveLogModel;
 use App\Modules\HardwareUitgave\Models\HardwareUitgaveModel;
 
 /**
@@ -51,19 +52,29 @@ class HardwareUitgaveService
             throw new NotFoundException("Hardware-uitgave {$id} niet gevonden.");
         }
 
-        return ['item' => $item];
+        return ['item' => $item, 'logs' => HardwareUitgaveLogModel::forHardwareUitgave($id)];
     }
 
-    public function setStatus(int $id, string $status): array
+    /** @param array{id:int} $currentUser */
+    public function setStatus(int $id, string $status, array $currentUser): array
     {
-        if (HardwareUitgaveModel::find($id) === null) {
+        $bestaand = HardwareUitgaveModel::find($id);
+        if ($bestaand === null) {
             throw new NotFoundException("Hardware-uitgave {$id} niet gevonden.");
         }
         if (!in_array($status, self::STATUSSEN, true)) {
             throw new ValidationException(['status' => ["Ongeldige status: {$status}."]]);
         }
 
-        HardwareUitgaveModel::update($id, ['status' => $status]);
+        if ($bestaand['status'] !== $status) {
+            HardwareUitgaveModel::update($id, ['status' => $status]);
+            HardwareUitgaveLogModel::create([
+                'hardware_uitgave_id' => $id,
+                'user_id' => $currentUser['id'],
+                'status_van' => $bestaand['status'],
+                'status_naar' => $status,
+            ]);
+        }
 
         return $this->find($id);
     }

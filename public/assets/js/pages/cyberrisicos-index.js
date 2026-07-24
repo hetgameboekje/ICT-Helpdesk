@@ -1,4 +1,5 @@
 import { api, ApiError } from '/assets/js/api/client.js';
+import { actionMenuHtml, wireActionMenu, openSheet } from '/assets/js/ui/panel-menu.js';
 
 /**
  * Cyberrisico's: lijst + item in één split-view scherm, zoals in het Lovable-ontwerp
@@ -159,15 +160,66 @@ async function loadDetail(id) {
     }
 }
 
+// Sheet-inhoud van het logboek staat, indien open, ingesteld op het item dat nu getoond wordt —
+// zodat een statuswijziging of nieuwe logregel de open sheet live bijwerkt i.p.v. hem te sluiten.
+let logSheetOpenForId = null;
+
+function logboekSheetHtml(itemId, logs) {
+    return `
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+            ${logs.length === 0 ? '<p style="font-size:12px;color:var(--color-text-tertiary)">Nog geen logregels.</p>' : logs.map((l) => `
+                <div style="font-size:12.5px;border-bottom:0.5px solid var(--color-border-tertiary);padding-bottom:8px">
+                    <span class="mono" style="font-size:10px;color:var(--color-text-tertiary)">${esc(String(l.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+                    ${l.user_naam ? ` <span style="font-size:11px;color:var(--color-text-tertiary)">&middot; ${esc(l.user_naam)}</span>` : ''}
+                    <div style="font-weight:500;margin-top:2px">${esc(l.titel)}</div>
+                    <div style="color:var(--color-text-secondary)">${esc(l.omschrijving)}</div>
+                </div>
+            `).join('')}
+        </div>
+        <form id="crLogForm" style="display:flex;flex-direction:column;gap:8px">
+            <input type="text" name="titel" placeholder="Titel" required>
+            <textarea name="omschrijving" rows="2" placeholder="Omschrijving" required></textarea>
+            <button class="btn btn-accent" type="submit" style="align-self:flex-end">Toevoegen</button>
+        </form>
+    `;
+}
+
+function openLogboekSheet(itemId, logs) {
+    logSheetOpenForId = itemId;
+    const body = openSheet('Logboek', logboekSheetHtml(itemId, logs));
+    wireLogForm(body, itemId);
+}
+
+function wireLogForm(container, itemId) {
+    const form = container.querySelector('#crLogForm');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const res = await api.post(`/api/v1/cyberrisicos/${itemId}/log`, {
+                titel: form.titel.value.trim(),
+                omschrijving: form.omschrijving.value.trim(),
+            });
+            renderDetail(res.data.item, res.data.logs);
+            if (logSheetOpenForId === itemId) openLogboekSheet(itemId, res.data.logs);
+        } catch (err) {
+            alert(err instanceof ApiError ? err.message : 'Opslaan mislukt.');
+        }
+    });
+}
+
 function renderDetail(item, logs) {
     const statusOptions = Object.entries(STATUS_LABELS)
         .map(([val, label]) => `<option value="${val}"${item.status === val ? ' selected' : ''}>${esc(label)}</option>`)
         .join('');
 
     document.getElementById('crDetail').innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span class="mono" style="font-size:11px;color:var(--color-text-tertiary)">#${item.id}</span>
-            ${prioBadge(item.prioriteit)}${item.is_gevoelig == 1 ? ' <span class="badge badge-risico-kritiek"><i class="bi bi-eye-slash"></i> Gevoelig</span>' : ''}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="mono" style="font-size:11px;color:var(--color-text-tertiary)">#${item.id}</span>
+                ${prioBadge(item.prioriteit)}${item.is_gevoelig == 1 ? ' <span class="badge badge-risico-kritiek"><i class="bi bi-eye-slash"></i> Gevoelig</span>' : ''}
+            </div>
+            ${actionMenuHtml('cr-detail')}
         </div>
         <h2 style="font-size:18px;font-weight:600;margin:0">${esc(item.titel)}</h2>
         <p style="font-size:13px;color:var(--color-text-secondary);margin-top:8px;line-height:1.6">${nl2br(item.omschrijving)}</p>
@@ -181,50 +233,30 @@ function renderDetail(item, logs) {
         </div>
         ${item.oplossingsadvies ? `<div style="margin-top:12px"><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Oplossingsadvies</div><div style="font-size:12.5px;margin-top:2px">${nl2br(item.oplossingsadvies)}</div></div>` : ''}
         <div style="border-top:0.5px solid var(--color-border-tertiary);margin-top:16px;padding-top:16px">
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <div style="display:flex;gap:8px;align-items:center">
                 <select id="crStatusSelect" style="flex:1">${statusOptions}</select>
                 <button class="btn" type="button" id="crStatusBtn">Status bijwerken</button>
                 <a class="btn btn-ghost" href="/cyberrisicos/${item.id}/edit">Bewerken</a>
             </div>
-            <h3 style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-tertiary);margin:0 0 8px">Logboek</h3>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-                ${logs.length === 0 ? '<p style="font-size:12px;color:var(--color-text-tertiary)">Nog geen logregels.</p>' : logs.map((l) => `
-                    <div style="font-size:12.5px">
-                        <span class="mono" style="font-size:10px;color:var(--color-text-tertiary)">${esc(String(l.created_at || '').slice(0, 16).replace('T', ' '))}</span>
-                        <div style="font-weight:500;margin-top:2px">${esc(l.titel)}</div>
-                        <div style="color:var(--color-text-secondary)">${esc(l.omschrijving)}</div>
-                    </div>
-                `).join('')}
-            </div>
-            <form id="crLogForm" style="display:flex;flex-direction:column;gap:8px">
-                <input type="text" name="titel" placeholder="Titel" required>
-                <textarea name="omschrijving" rows="2" placeholder="Omschrijving" required></textarea>
-                <button class="btn btn-accent" type="submit" style="align-self:flex-end">Toevoegen</button>
-            </form>
         </div>
     `;
+
+    wireActionMenu(document.getElementById('crDetail'), 'cr-detail', [
+        {
+            label: `Logboek bekijken (${logs.length})`,
+            icon: 'bi-clock-history',
+            onClick: () => openLogboekSheet(item.id, logs),
+        },
+    ]);
 
     document.getElementById('crStatusBtn').addEventListener('click', async () => {
         try {
             const res = await api.put(`/api/v1/cyberrisicos/${item.id}`, { status: document.getElementById('crStatusSelect').value });
             renderDetail(res.data.item, res.data.logs);
             renderList(currentItems.map((r) => (r.id === item.id ? { ...r, status: res.data.item.status } : r)));
+            if (logSheetOpenForId === item.id) openLogboekSheet(item.id, res.data.logs);
         } catch (err) {
             alert(err instanceof ApiError ? err.message : 'Bijwerken mislukt.');
-        }
-    });
-
-    document.getElementById('crLogForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        try {
-            const res = await api.post(`/api/v1/cyberrisicos/${item.id}/log`, {
-                titel: form.titel.value.trim(),
-                omschrijving: form.omschrijving.value.trim(),
-            });
-            renderDetail(res.data.item, res.data.logs);
-        } catch (err) {
-            alert(err instanceof ApiError ? err.message : 'Opslaan mislukt.');
         }
     });
 }
