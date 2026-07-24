@@ -293,11 +293,37 @@ client-side (na een 401) moeten in plaats van server-side vóór de eerste rende
 
 **Waarom nu, en met het oog op een toekomstige Android-app:** de `/api/v1/*`-laag is bewust
 framework-/frontend-onafhankelijk (JSON in/uit, geen HTML). Een native app kan dezelfde endpoints
-hergebruiken, maar niet de huidige auth: `ApiController::requireAuth()` leest nu uitsluitend de
-sessiecookie (`$_SESSION['user']`), wat alleen werkt voor een browser same-origin. Zodra een
-Android-app daadwerkelijk gebouwd wordt, moet daar een tweede auth-modus (bv. bearer-token, uitgegeven
-bij inloggen) naast komen — nog niet gebouwd, wel een randvoorwaarde om `requireAuth()` op dat moment
-uitbreidbaar te houden i.p.v. hardcoded aan de sessiecookie.
+hergebruiken. **Update (2026-07-24) — bearer-token-auth toegevoegd:** `ApiController::requireAuth()`
+accepteert nu, náást de sessiecookie, ook een `Authorization: Bearer <token>`-header voor
+niet-browserclients (CLI/desktop/Android). Nieuwe onderdelen:
+- `personal_access_tokens`-tabel (`database/xml/personal_access_tokens.xml`) + `App\Shared\Auth\Models\PersonalAccessTokenModel`
+  (hash+prefix, intrekken via soft delete) — zelfde opzet als `App\Shared\ApiKey`, maar per gebruiker
+  i.p.v. een vlakke scope: het token draagt de identiteit van precies één account, dus de bestaande
+  rol-/afdelingsscope in de Service-laag (bv. `TicketService::scopeAllowed()`, `RechtenModel::has()`)
+  blijft ongewijzigd gelden — geen aparte autorisatielaag voor tokenclients nodig.
+- `App\Shared\Auth\AuthService::attemptLogin()` — credential-check + lockout/audit-logging
+  (`login_attempts`), geëxtraheerd uit `AuthController::login()` zodat de sessie-login (HTML) en de
+  nieuwe `POST /api/v1/auth/login` (JSON) dezelfde brute-force-bescherming delen i.p.v. hem te dupliceren.
+  `AuthService::userPayload()` bouwt de gebruikersvorm (`id/naam/rol/foto/afdeling_id`) die zowel
+  `$_SESSION['user']` als de tokenauth gebruiken.
+- `POST /api/v1/auth/login` (body: `email`, `wachtwoord`, optioneel `device_naam`) → `201` met
+  `{token, user}`; `POST /api/v1/auth/logout` (met de bearer-header) trekt dat ene token in. Geen
+  CSRF-check op deze routes (Router stelt `/api/*` daar al van vrij, en vóór het inloggen bestaat er
+  nog geen sessie om een token uit te lezen); `ApiController::requireCsrf()` slaat de check ook over
+  zodra `requireAuth()` een tokengebruiker vond — een `Authorization`-header kan een browser nooit
+  ongevraagd cross-site meesturen, dus dat is precies het scenario dat CSRF-tokens dekken en hier niet
+  van toepassing is.
+- `personal_access_tokens.user_id` heeft bewust geen DB-niveau FK naar `users.id` — zelfde reden als
+  `kb_article_drafts.reviewer_id`/`kennisbank_artikelen.auteur_id` (zie die tabellen): `users` dateert
+  van vóór het XML-schemasysteem en het werkelijke id-kolomtype kan per omgeving afwijken.
+- Lokaal end-to-end geverifieerd tegen een echte lokale database: login geeft token, `GET /api/v1/tickets`
+  en `/api/v1/kennisbank` werken met alleen de bearer-header (geen sessiecookie), `requirePermission()`
+  weigert een token zonder rechten net als een sessie zou doen (403), een POST met bearer-token en zónder
+  CSRF-header komt voorbij `requireCsrf()`, en na `logout` geeft hetzelfde token weer 401.
+- **Nog niet gebouwd:** geen tokenoverzicht/-intrekscherm in Beheer (nu alleen via directe DB-query of
+  een toekomstig `GET /api/v1/auth/tokens`), geen token-expiry (tokens blijven geldig tot expliciet
+  ingetrokken), en de overige 16 modules hebben nog steeds geen `/api/v1/*`-laag — dit lost alleen het
+  auth-blokkerende punt op, niet de functionaliteitsdekking (zie "API-laag"-sectie in README.md).
 
 **Belangrijk — `docs/design/*.tsx` staat niet betrouwbaar synchroon met Lovable, gebruik altijd de
 Lovable MCP:** `docs/design/modules.kennisbank.tsx` bleek bij de conversie hieronder de verkeerde

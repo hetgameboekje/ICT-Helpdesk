@@ -72,6 +72,15 @@ draaien nog op het oude server-rendered patroon en volgen stap voor stap. Zie CL
 patroon, de envelope-vorm en het "SOLID-review"-punt over de gedeelde `findOrFail()`-helper in
 `TicketService` (voorkomt dat elke methode zijn eigen find-of-404 + scope-check herhaalt).
 
+**Auth voor niet-browserclients (CLI/desktop/Android):** naast de sessiecookie accepteert de
+`/api/v1/*`-laag ook een `Authorization: Bearer <token>`-header. Token ophalen via
+`POST /api/v1/auth/login` (body `email`/`wachtwoord`/optioneel `device_naam`), intrekken via
+`POST /api/v1/auth/logout`. Zo'n token draagt de identiteit van precies één gebruiker, dus alle
+bestaande rechten-/scope-logica (rol, afdeling) blijft gewoon gelden — er is geen aparte, beperktere
+autorisatie voor tokenclients. Zie CLAUDE.md voor de volledige uitleg (waarom geen CSRF-check nodig is
+voor tokenauth, en wat er nog ontbreekt: geen tokenbeheerscherm, geen expiry, en de meeste modules
+hebben nog steeds geen `/api/v1/*`-laag om tegen in te loggen).
+
 ## Projectstructuur
 
 ```text

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table name="personal_access_tokens" engine="InnoDB">
+  <columns>
+    <column name="id" type="INT" primary="true" auto_increment="true"/>
+    <!-- Geen references="users.id": users dateert van vóór het XML-schemasysteem (zie
+         SchemaParser::LEGACY_PLAIN_INT_TABLES) en het werkelijke id-kolomtype kan per omgeving
+         afwijken van die aanname — zelfde aanpak als kennisbank_artikelen.auteur_id en
+         kb_article_drafts.reviewer_id, die om diezelfde reden ook geen DB-niveau FK hebben. -->
+    <column name="user_id" type="INT" nullable="false"/>
+    <column name="naam" type="VARCHAR" length="150" nullable="false"/>
+    <column name="token_hash" type="VARCHAR" length="255" nullable="false"/>
+    <column name="token_prefix" type="VARCHAR" length="8" nullable="false"/>
+    <column name="laatst_gebruikt_at" type="TIMESTAMP" nullable="true"/>
+    <column name="created_at" type="TIMESTAMP" nullable="false" default="CURRENT_TIMESTAMP"/>
+    <column name="updated_at" type="TIMESTAMP" nullable="false" default="CURRENT_TIMESTAMP" on_update="CURRENT_TIMESTAMP"/>
+    <column name="deleted_at" type="TIMESTAMP" nullable="true"/>
+  </columns>
+</table>

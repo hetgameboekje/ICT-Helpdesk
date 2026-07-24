@@ -2,6 +2,7 @@
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Api\V1\AuthApiController;
 use App\Api\V1\CyberRisicosApiController;
 use App\Api\V1\DevicesApiController;
 use App\Api\V1\HardwareUitgavenApiController;
@@ -163,9 +164,14 @@ $router->get('/tickets/categorieen', [TicketController::class, 'categorieen']);
 $router->post('/tickets/{id}/tijd', [TicketTijdController::class, 'store']);
 
 // JSON-API v1 (referentiepatroon: 3-laags architectuur, zie CLAUDE.md > API-architectuur).
-// Zelfde sessie-auth als de routes hierboven; CSRF wordt binnen TicketsApiController zelf
-// gecontroleerd omdat Router alle /api/*-paden standaard vrijstelt (bedoeld voor de bestaande
+// Sessie-auth (net als de routes hierboven) óf een per-gebruiker bearer-token voor
+// niet-browserclients (CLI/desktop/Android) — zie ApiController voor de uitleg van beide modi.
+// CSRF wordt binnen elke *ApiController zelf gecontroleerd (en overgeslagen bij een bearer-token)
+// omdat Router alle /api/*-paden standaard vrijstelt (bedoeld voor de bestaande
 // machine-to-machine endpoints met API-sleutel, zie App\Shared\ApiKey).
+$router->post('/api/v1/auth/login', [AuthApiController::class, 'login']);
+$router->post('/api/v1/auth/logout', [AuthApiController::class, 'logout']);
+
 $router->get('/api/v1/tickets', [TicketsApiController::class, 'index']);
 $router->post('/api/v1/tickets', [TicketsApiController::class, 'store']);
 $router->get('/api/v1/tickets/{id}', [TicketsApiController::class, 'show']);

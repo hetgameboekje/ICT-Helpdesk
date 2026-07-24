@@ -6,6 +6,8 @@ use App\Core\Csrf;
 use App\Core\Exceptions\ForbiddenException;
 use App\Core\Exceptions\NotFoundException;
 use App\Core\Exceptions\ValidationException;
+use App\Shared\Auth\AuthService;
+use App\Shared\Auth\Models\PersonalAccessTokenModel;
 use App\Shared\Rechten\Models\RechtenModel;
 
 /**
@@ -14,13 +16,19 @@ use App\Shared\Rechten\Models\RechtenModel;
  * waarvan de exceptions (ValidationException/NotFoundException/ForbiddenException) hieronder naar de
  * juiste HTTP-status worden vertaald.
  *
- * Auth: dezelfde sessiecookie als de server-rendered routes (same-origin op Hostnet, geen apart
- * tokensysteem nodig). CSRF wordt hier expliciet gecontroleerd omdat de Router alle `/api/*`-paden
- * standaard vrijstelt van CSRF (bedoeld voor de bestaande machine-to-machine endpoints met een
- * API-sleutel) — deze sessie-geauthenticeerde routes hebben dus zelf een check nodig.
+ * Auth: twee modi. (1) dezelfde sessiecookie als de server-rendered routes (same-origin, gebruikt
+ * door de browser-JS in public/assets/js/pages/*) — CSRF wordt dan expliciet gecontroleerd omdat de
+ * Router alle `/api/*`-paden standaard vrijstelt (bedoeld voor de bestaande machine-to-machine
+ * endpoints met een API-sleutel). (2) een `Authorization: Bearer <token>`-header met een per-gebruiker
+ * token (App\Shared\Auth\Models\PersonalAccessTokenModel, uitgegeven via POST /api/v1/auth/login) voor
+ * niet-browserclients (CLI/desktop/Android) — geen CSRF-check nodig, want zo'n header kan een browser
+ * nooit automatisch cross-site meesturen (dat is precies wat CSRF-tokens tegen sessiecookies dekken).
  */
 abstract class ApiController
 {
+    /** True zodra requireAuth() een gebruiker via een bearer-token vond i.p.v. de sessiecookie. */
+    private bool $viaToken = false;
+
     protected function handle(\Closure $action): void
     {
         header('Content-Type: application/json; charset=utf-8');
@@ -38,6 +46,12 @@ abstract class ApiController
 
     protected function requireAuth(): array
     {
+        $tokenUser = $this->userFromBearerToken();
+        if ($tokenUser !== null) {
+            $this->viaToken = true;
+            return $tokenUser;
+        }
+
         $user = $_SESSION['user'] ?? null;
         if ($user === null) {
             $this->error(401, 'Niet ingelogd.');
@@ -45,6 +59,25 @@ abstract class ApiController
         }
 
         return $user;
+    }
+
+    /**
+     * @return array{id:int,naam:string,rol:string,foto:?string,afdeling_id:?int}|null zelfde vorm als
+     *     $_SESSION['user'] (zie AuthController::login()), zodat Service-laagcode als
+     *     TicketService::scopeAllowed() niet hoeft te weten via welke authmodus de request binnenkwam.
+     */
+    private function userFromBearerToken(): ?array
+    {
+        $header = $_SERVER['HTTP_AUTHORIZATION']
+            ?? (function_exists('apache_request_headers') ? (apache_request_headers()['Authorization'] ?? null) : null);
+        if (!is_string($header) || !str_starts_with($header, 'Bearer ')) {
+            return null;
+        }
+
+        $plainToken = trim(substr($header, strlen('Bearer ')));
+        $user = PersonalAccessTokenModel::vindGebruiker($plainToken);
+
+        return $user === null ? null : AuthService::userPayload($user);
     }
 
     protected function requirePermission(array $currentUser, string $module, string $actie): void
@@ -59,9 +92,18 @@ abstract class ApiController
         }
     }
 
-    /** Voor POST/PUT/DELETE — GET-requests zijn side-effect-vrij en hebben geen CSRF-check nodig. */
+    /**
+     * Voor POST/PUT/DELETE — GET-requests zijn side-effect-vrij en hebben geen CSRF-check nodig.
+     * Overgeslagen bij bearer-token-auth: CSRF beschermt tegen een browser die ongevraagd de
+     * sessiecookie meestuurt bij een cross-site request; een Authorization-header stuurt geen enkele
+     * browser automatisch mee, dus dat scenario speelt hier niet.
+     */
     protected function requireCsrf(): void
     {
+        if ($this->viaToken) {
+            return;
+        }
+
         $header = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
         if (!Csrf::verify(is_string($header) ? $header : null)) {
             $this->error(419, 'Ongeldig of verlopen beveiligingstoken. Herlaad de pagina en probeer het opnieuw.');
