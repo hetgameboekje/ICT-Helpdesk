@@ -1,19 +1,27 @@
 import { api, ApiError } from '/assets/js/api/client.js';
+import { sortableHeaderHtml, bindSortableHeaders } from '/assets/js/table-sort.js';
 
 /**
  * Voorraad: lijst + item in één split-view scherm, zoals in het Lovable-ontwerp
  * (src/routes/modules.voorraad.tsx, via de Lovable MCP). Vervangt de eerdere server-rendered
  * index.php/show.php-inhoud.
  *
- * Grote afwijking t.o.v. de mockup: Lovable gaat uit van kwantiteitsbeheer (aantal/minimum,
- * bijboeken/afboeken-knoppen, voorraadbalk) — onze `voorraad_items`-tabel is juist stuksgewijs
- * geserialiseerd (één rij per fysiek item met eigen barcode/serienummer en status
- * op_voorraad/uitgegeven/afgeschreven, zie CLAUDE.md). "Bijboeken/afboeken" bestaat daarom niet;
- * in plaats daarvan toont dit scherm de echte status + de echte uitgiftehistorie van het item
- * (via `uitgiften`, waar Lovable een verzonnen mutatielijst toonde). "Nieuw artikel" linkt door naar
- * het bestaande (multi-item/barcode/DxDiag-upload) aanmaakformulier i.p.v. een quick-add te faken —
- * te veel eigen logica om hier te herbouwen (zie VoorraadService). KPI's zijn de echte status-
- * tellingen i.p.v. "onder minimum"/"totaal stuks" (geen aantal/minimum-concept in dit datamodel).
+ * Bewuste afwijkingen t.o.v. de mockup — zie VoorraadService voor de reden: dit is een per-stuk
+ * (barcode/serienummer) registratie, geen aantal/minimum-voorraadmodel:
+ * - Geen "aantal/minimum"-voorraadbalk en geen "onder minimum"-KPI: die drempel bestaat niet in
+ *   het datamodel. KPI's tonen in plaats daarvan de echte statusverdeling (op voorraad/uitgegeven/
+ *   afgeschreven).
+ * - Geen "Bijboeken/Afboeken"-knoppen (aantal-mutaties bestaan niet) — vervangen door een
+ *   statuswijziging (op_voorraad/uitgegeven/afgeschreven), een actie die wel echt bestaat
+ *   (VoorraadItemModel::setStatus()).
+ * - Geen verzonnen "Mutatiehistorie" — vervangen door de echte itemdetails (serienummer, locatie,
+ *   gekoppeld apparaat) en een link naar de barcode-printpagina.
+ * - "Nieuw artikel"/"Scan" linken door naar de bestaande server-rendered formulieren
+ *   (/voorraad/create met DxDiag-upload en serienummer-batches) — dat blijft buiten deze
+ *   JSON-API-scope, net als tickets-import/export.
+ *
+ * Klikbaar sorteren op de kolomkoppen (Artikel/Status/Locatie) is geen onderdeel van de mockup —
+ * zie public/assets/js/table-sort.js voor de onderbouwing van die bewuste uitbreiding.
  */
 
 function esc(value) {
@@ -52,7 +60,10 @@ function renderShell() {
         </div>
         <div class="kb-split" style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start">
             <div class="card" style="padding:0;overflow:hidden">
-                <div id="vrListBody"></div>
+                <div class="table-wrap"><table>
+                    <thead id="vrThead"></thead>
+                    <tbody id="vrListBody"></tbody>
+                </table></div>
             </div>
             <div class="card" id="vrDetail" style="padding:24px"></div>
         </div>
@@ -66,6 +77,32 @@ function renderShell() {
         window.history.replaceState({}, '', '/voorraad' + (params.toString() ? `?${params}` : ''));
         load();
     }, 300));
+
+    document.getElementById('vrStatusSelect').addEventListener('change', (e) => {
+        const params = getParams();
+        if (e.target.value) { params.set('status', e.target.value); } else { params.delete('status'); }
+        window.history.replaceState({}, '', '/voorraad' + (params.toString() ? `?${params}` : ''));
+        load();
+    });
+
+    bindSortableHeaders(document.getElementById('vrThead'), (column, dir) => {
+        const params = getParams();
+        params.set('sort', column);
+        params.set('dir', dir);
+        window.history.replaceState({}, '', '/voorraad' + (params.toString() ? `?${params}` : ''));
+        load();
+    });
+}
+
+function renderTableHead() {
+    const params = getParams();
+    const currentSort = params.get('sort');
+    const currentDir = params.get('dir') || 'asc';
+    document.getElementById('vrThead').innerHTML = `<tr>
+        <th>${sortableHeaderHtml('type_naam', 'Artikel', currentSort, currentDir)}</th>
+        <th class="col-2">${sortableHeaderHtml('status', 'Status', currentSort, currentDir)}</th>
+        <th class="col-2">${sortableHeaderHtml('locatie', 'Locatie', currentSort, currentDir)}</th>
+    </tr>`;
 }
 
 function debounce(fn, ms) {
@@ -194,7 +231,8 @@ async function load() {
     if (!document.getElementById('vrListBody')) {
         renderShell();
     }
-    document.getElementById('vrListBody').innerHTML = '<div class="empty-state">Laden&hellip;</div>';
+    renderTableHead();
+    document.getElementById('vrListBody').innerHTML = '<tr><td colspan="3" class="empty-state">Laden&hellip;</td></tr>';
 
     try {
         const res = await api.get('/api/v1/voorraad' + (window.location.search || ''));
