@@ -10,6 +10,7 @@ use App\Api\V1\KennisbankApiController;
 use App\Api\V1\MedewerkersApiController;
 use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
+use App\Api\V1\SchijfgebruikApiController;
 use App\Api\V1\ScriptsApiController;
 use App\Api\V1\TicketsApiController;
 use App\Api\V1\UitgiftenApiController;
@@ -249,6 +250,8 @@ $router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::cl
 $router->get('/api/v1/scripts', [ScriptsApiController::class, 'index']);
 $router->get('/api/v1/scripts/{id}', [ScriptsApiController::class, 'show']);
 $router->add('DELETE', '/api/v1/scripts/{id}', [ScriptsApiController::class, 'destroy']);
+
+$router->get('/api/v1/schijfgebruik', [SchijfgebruikApiController::class, 'index']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
