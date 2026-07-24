@@ -4,7 +4,9 @@ require __DIR__ . '/../app/bootstrap.php';
 
 use App\Api\V1\CyberRisicosApiController;
 use App\Api\V1\DevicesApiController;
+use App\Api\V1\HardwareUitgavenApiController;
 use App\Api\V1\KennisbankApiController;
+use App\Api\V1\MedewerkersApiController;
 use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\TicketsApiController;
@@ -218,6 +220,15 @@ $router->get('/api/v1/uitgiften', [UitgiftenApiController::class, 'index']);
 $router->post('/api/v1/uitgiften', [UitgiftenApiController::class, 'store']);
 $router->get('/api/v1/uitgiften/{id}', [UitgiftenApiController::class, 'show']);
 $router->post('/api/v1/uitgiften/{id}/retour', [UitgiftenApiController::class, 'retour']);
+
+$router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class, 'index']);
+$router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
+$router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
+$router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
+
+$router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
+$router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
+$router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
 
 $router->get('/verbeterpunten/categorieen', [VerbeterpuntController::class, 'categorieen']);
 $router->post('/verbeterpunten/{id}/tijd', [VerbeterpuntTijdController::class, 'store']);
