@@ -65,6 +65,32 @@ class PersonalAccessTokenModel extends Model
         $stmt->execute([hash('sha256', $plainToken)]);
     }
 
+    /** Actieve tokens van één gebruiker (voor een token-overzicht/-intrekscherm), zonder de hash. */
+    public static function actieveVoorGebruiker(int $userId): array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id, naam, token_prefix, laatst_gebruikt_at, created_at
+             FROM personal_access_tokens
+             WHERE user_id = ? AND deleted_at IS NULL
+             ORDER BY created_at DESC'
+        );
+        $stmt->execute([$userId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /** Trekt een token in, alleen als het van deze gebruiker is. @return bool of er iets is ingetrokken. */
+    public static function intrekkenVoorGebruiker(int $id, int $userId): bool
+    {
+        $stmt = Database::pdo()->prepare(
+            'UPDATE personal_access_tokens SET deleted_at = NOW()
+             WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+        );
+        $stmt->execute([$id, $userId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
     private static function registreerGebruik(string $plainToken): void
     {
         $stmt = Database::pdo()->prepare(

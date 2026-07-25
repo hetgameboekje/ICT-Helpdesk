@@ -5,8 +5,8 @@ namespace App\Api\V1;
 use App\Modules\Voorraad\VoorraadService;
 
 /**
- * Presentation/API-laag voor voorraad — /api/v1/voorraad*. Alleen index/show (read-only), zie
- * VoorraadService voor waarom create/update hier niet zitten.
+ * Presentation/API-laag voor voorraad — /api/v1/voorraad*. create/update dekken de kernvelden, geen
+ * DxDiag-upload (multipart) — zie VoorraadService.
  */
 class VoorraadApiController extends ApiController
 {
@@ -35,6 +35,29 @@ class VoorraadApiController extends ApiController
             $this->requirePermission($user, 'voorraad', 'lezen');
 
             $this->success($this->service->find($id));
+        });
+    }
+
+    public function store(): void
+    {
+        $this->handle(function () {
+            $user = $this->requireAuth();
+            $this->requirePermission($user, 'voorraad', 'schrijven');
+            $this->requireCsrf();
+
+            $result = $this->service->create($this->jsonBody(), $user);
+            $this->success($this->service->find($result['ids'][count($result['ids']) - 1]), status: 201);
+        });
+    }
+
+    public function update(int $id): void
+    {
+        $this->handle(function () use ($id) {
+            $user = $this->requireAuth();
+            $this->requirePermission($user, 'voorraad', 'schrijven');
+            $this->requireCsrf();
+
+            $this->success($this->service->update($id, $this->jsonBody()));
         });
     }
 }

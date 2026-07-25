@@ -5,6 +5,8 @@
     <column name="titel" type="VARCHAR" length="255" nullable="false"/>
     <column name="omschrijving" type="TEXT" nullable="false"/>
     <column name="categorie" type="VARCHAR" length="30" nullable="false" default="'overig'"/>
+    <column name="kans" type="TINYINT" nullable="false" default="3"/>
+    <column name="impact" type="TINYINT" nullable="false" default="3"/>
     <column name="prioriteit" type="VARCHAR" length="20" nullable="false" default="'middel'"/>
     <column name="status" type="VARCHAR" length="30" nullable="false" default="'nieuw'"/>
     <column name="locatie" type="VARCHAR" length="150"/>

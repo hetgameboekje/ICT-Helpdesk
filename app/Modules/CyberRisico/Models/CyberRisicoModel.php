@@ -9,9 +9,9 @@ class CyberRisicoModel extends Model
 {
     protected static string $table = 'cyberrisicos';
     protected static array $fillable = [
-        'titel', 'omschrijving', 'categorie', 'prioriteit', 'status', 'locatie', 'gemeld_door',
-        'afdeling_id', 'eigenaar_id', 'datum_geconstateerd', 'datum_gemeld', 'oplossingsadvies',
-        'bewijs_notities', 'is_gevoelig', 'aangemaakt_door_id',
+        'titel', 'omschrijving', 'categorie', 'kans', 'impact', 'prioriteit', 'status', 'locatie',
+        'gemeld_door', 'afdeling_id', 'eigenaar_id', 'datum_geconstateerd', 'datum_gemeld',
+        'oplossingsadvies', 'bewijs_notities', 'is_gevoelig', 'aangemaakt_door_id',
     ];
     protected static bool $softDeletes = true;
 
@@ -64,6 +64,15 @@ class CyberRisicoModel extends Model
         )->fetchColumn();
 
         return $cyberrisicos + $tickets;
+    }
+
+    /** @return array<string, int> prioriteit => aantal, voor de dashboard-KPI's. */
+    public static function countByPrioriteit(): array
+    {
+        $stmt = Database::pdo()->query(
+            'SELECT prioriteit, COUNT(*) AS aantal FROM cyberrisicos WHERE deleted_at IS NULL GROUP BY prioriteit'
+        );
+        return array_column($stmt->fetchAll(), 'aantal', 'prioriteit');
     }
 
     /**

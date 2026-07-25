@@ -19,6 +19,28 @@ class CyberRisicoService
     private const STATUSSEN = ['nieuw', 'in_onderzoek', 'bevestigd', 'opgelost', 'geaccepteerd'];
     private const GESLOTEN_STATUSSEN = ['opgelost', 'geaccepteerd'];
     private const PRIORITEITEN = ['laag', 'middel', 'hoog', 'kritiek'];
+
+    /**
+     * Zelfde risicomatrix-thresholds als Lovable's levelFrom() in modules.cyberrisico.tsx
+     * (kans x impact, 1-5 elk), alleen met onze eigen labelnaam voor het middelste niveau
+     * ("middel" i.p.v. Lovable's "gemiddeld" — zelfde risico-CSS-klasse, zie PRIO_RISK_CLASS in
+     * cyberrisicos-index.js).
+     */
+    public static function prioriteitVanMatrix(int $kans, int $impact): string
+    {
+        $score = $kans * $impact;
+        if ($score >= 20) {
+            return 'kritiek';
+        }
+        if ($score >= 12) {
+            return 'hoog';
+        }
+        if ($score >= 6) {
+            return 'middel';
+        }
+
+        return 'laag';
+    }
     private const CATEGORIEEN = [
         'fysieke_toegang', 'social_engineering', 'onveilige_opslag', 'papieren_informatie',
         'device_exposure', 'overig',
@@ -75,7 +97,10 @@ class CyberRisicoService
     {
         $huidig = $this->findScoped($id, $currentUser);
 
-        $data = $this->validate($input);
+        // Partiële updates (bv. alleen {status: ...} vanuit de statusknop) mogen niet stuklopen op
+        // de titel/omschrijving-verplichting van validate() — ontbrekende velden vallen terug op de
+        // huidige waarden, zodat alleen echt meegestuurde velden wijzigen.
+        $data = $this->validate(array_merge($huidig, $input));
         if (in_array($input['status'] ?? '', self::STATUSSEN, true)) {
             $data['status'] = $input['status'];
         }
@@ -175,11 +200,18 @@ class CyberRisicoService
             throw new ValidationException($errors);
         }
 
+        $kans = (int) ($input['kans'] ?? 3);
+        $kans = min(5, max(1, $kans ?: 3));
+        $impact = (int) ($input['impact'] ?? 3);
+        $impact = min(5, max(1, $impact ?: 3));
+
         return [
             'titel' => $titel,
             'omschrijving' => $omschrijving,
             'categorie' => in_array($input['categorie'] ?? '', self::CATEGORIEEN, true) ? $input['categorie'] : 'overig',
-            'prioriteit' => in_array($input['prioriteit'] ?? '', self::PRIORITEITEN, true) ? $input['prioriteit'] : 'middel',
+            'kans' => $kans,
+            'impact' => $impact,
+            'prioriteit' => self::prioriteitVanMatrix($kans, $impact),
             'locatie' => trim((string) ($input['locatie'] ?? '')) ?: null,
             'gemeld_door' => trim((string) ($input['gemeld_door'] ?? '')) ?: null,
             'afdeling_id' => !empty($input['afdeling_id']) ? (int) $input['afdeling_id'] : null,

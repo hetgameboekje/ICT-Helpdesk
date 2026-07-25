@@ -3,6 +3,7 @@
 namespace App\Modules\Script;
 
 use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\ValidationException;
 use App\Core\TableQuery;
 use App\Modules\Script\Models\ScriptModel;
 
@@ -46,6 +47,25 @@ class ScriptService
         return ['item' => $item];
     }
 
+    public function create(array $input, array $currentUser): int
+    {
+        $data = $this->validate($input);
+        $data['auteur_id'] = $currentUser['id'];
+
+        return ScriptModel::create($data);
+    }
+
+    public function update(int $id, array $input): array
+    {
+        if (ScriptModel::find($id) === null) {
+            throw new NotFoundException("Script {$id} niet gevonden.");
+        }
+
+        ScriptModel::update($id, $this->validate($input));
+
+        return $this->find($id);
+    }
+
     public function delete(int $id): void
     {
         if (ScriptModel::find($id) === null) {
@@ -53,6 +73,32 @@ class ScriptService
         }
 
         ScriptModel::delete($id);
+    }
+
+    private function validate(array $input): array
+    {
+        $titel = trim((string) ($input['titel'] ?? ''));
+        $inhoud = trim((string) ($input['inhoud'] ?? ''));
+
+        $errors = [];
+        if ($titel === '') {
+            $errors['titel'][] = 'Titel is verplicht.';
+        }
+        if ($inhoud === '') {
+            $errors['inhoud'][] = 'Inhoud is verplicht.';
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        $type = (string) ($input['type'] ?? '');
+
+        return [
+            'titel' => $titel,
+            'omschrijving' => trim((string) ($input['omschrijving'] ?? '')) ?: null,
+            'type' => in_array($type, array_keys(self::TYPE_LABELS), true) ? $type : 'overig',
+            'inhoud' => $inhoud,
+        ];
     }
 
     private function typeCounts(array $allItems): array

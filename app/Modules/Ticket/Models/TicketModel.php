@@ -210,6 +210,29 @@ class TicketModel extends Model
         return array_values(array_filter($groups, fn (array $g) => $g['aantal'] > 1));
     }
 
+    /**
+     * Globale zoekbalk (zie App\Shared\Search\SearchService) — zoekt alleen op titel, want
+     * omschrijving/opdrachtgever_naam staan versleuteld in de database (zie VERSLEUTELDE_VELDEN) en
+     * zijn dus niet met SQL LIKE te doorzoeken. Past dezelfde scope toe als TicketService::scopeAllowed()
+     * (admin ziet alles, anderen alleen eigen afdeling/tickets) — direct in SQL i.p.v. achteraf in PHP.
+     */
+    public static function search(string $q, array $currentUser, int $limit = 5): array
+    {
+        $sql = 'SELECT id, titel, status FROM tickets WHERE deleted_at IS NULL AND titel LIKE ?';
+        $params = ['%' . $q . '%'];
+
+        if (($currentUser['rol'] ?? '') !== 'admin') {
+            $sql .= ' AND (afdeling_id <=> ? OR behandelaar_id = ? OR aangemaakt_door_id = ?)';
+            array_push($params, $currentUser['afdeling_id'] ?? null, (int) ($currentUser['id'] ?? 0), (int) ($currentUser['id'] ?? 0));
+        }
+
+        $sql .= ' ORDER BY updated_at DESC LIMIT ' . (int) $limit;
+
+        $stmt = Database::pdo()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     /** Zoekt een ticket op escalatienummer (bv. het CAS-nummer uit een ACA-case-update-mail, zie TicketEmailIntakeController::storeAcaUpdate). */
     public static function findByEscalatieNummer(string $escalatieNummer): ?array
     {

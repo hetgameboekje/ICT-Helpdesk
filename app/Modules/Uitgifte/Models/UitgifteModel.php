@@ -55,6 +55,30 @@ class UitgifteModel extends Model
         $stmt->execute([$datum, $opmerking, $id]);
     }
 
+    public static function countAll(): int
+    {
+        return (int) Database::pdo()->query('SELECT COUNT(*) FROM uitgiften')->fetchColumn();
+    }
+
+    /** Nog niet geretourneerd. */
+    public static function countOpen(): int
+    {
+        return (int) Database::pdo()->query('SELECT COUNT(*) FROM uitgiften WHERE teruggegeven_op IS NULL')->fetchColumn();
+    }
+
+    /** Deze kalenderweek uitgegeven. */
+    public static function countDezeWeek(): int
+    {
+        return (int) Database::pdo()->query(
+            "SELECT COUNT(*) FROM uitgiften WHERE YEARWEEK(uitgegeven_op, 1) = YEARWEEK(CURDATE(), 1)"
+        )->fetchColumn();
+    }
+
+    public static function countGeretourneerd(): int
+    {
+        return (int) Database::pdo()->query('SELECT COUNT(*) FROM uitgiften WHERE teruggegeven_op IS NOT NULL')->fetchColumn();
+    }
+
     /** Top uitgegeven voorraadtypen (aller tijden, ongeacht of het item al geretourneerd is), voor het dashboard. */
     public static function topUitgegeven(int $limit = 5): array
     {

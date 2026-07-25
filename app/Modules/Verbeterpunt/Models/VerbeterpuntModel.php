@@ -48,4 +48,38 @@ class VerbeterpuntModel extends Model
 
         return $nieuw;
     }
+
+    /** @return array<string, int> status => aantal, voor de dashboard-KPI's. */
+    public static function telPerStatus(): array
+    {
+        $stmt = Database::pdo()->query(
+            'SELECT status, COUNT(*) AS aantal FROM verbeterpunten WHERE deleted_at IS NULL GROUP BY status'
+        );
+        return array_column($stmt->fetchAll(), 'aantal', 'status');
+    }
+
+    /** Aantal uitgevoerde verbeterpunten waarvan de laatste statuswijziging in het huidige kalenderkwartaal viel. */
+    public static function countAfgerondDitKwartaal(): int
+    {
+        $stmt = Database::pdo()->query(
+            "SELECT COUNT(*) FROM verbeterpunten
+             WHERE deleted_at IS NULL AND status = 'uitgevoerd'
+               AND QUARTER(updated_at) = QUARTER(CURDATE()) AND YEAR(updated_at) = YEAR(CURDATE())"
+        );
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Gemiddeld aantal dagen tussen aanmaken en de laatste statuswijziging van uitgevoerde
+     * verbeterpunten — er is geen apart "afgerond_op"-veld, updated_at is de enige beschikbare proxy.
+     */
+    public static function gemiddeldeDoorlooptijdDagen(): ?float
+    {
+        $stmt = Database::pdo()->query(
+            "SELECT AVG(TIMESTAMPDIFF(DAY, created_at, updated_at)) FROM verbeterpunten
+             WHERE deleted_at IS NULL AND status = 'uitgevoerd'"
+        );
+        $value = $stmt->fetchColumn();
+        return $value !== false && $value !== null ? round((float) $value, 1) : null;
+    }
 }

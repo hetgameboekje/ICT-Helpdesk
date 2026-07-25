@@ -20,6 +20,25 @@ class SchijfgebruikSchijfModel extends Model
         return $stmt->fetchAll();
     }
 
+    /** Geaggregeerde totalen voor de dashboard-KPI-tegels — zelfde berekening als SchijfgebruikService::stats(), maar in SQL i.p.v. over alle rijen in PHP. */
+    public static function dashboardStats(): array
+    {
+        $row = Database::pdo()->query("
+            SELECT COUNT(DISTINCT s.device_id) AS devices,
+                   COALESCE(SUM(s.capaciteit_bytes), 0) AS totaal_bytes,
+                   COALESCE(SUM(s.capaciteit_bytes * s.gebruik_percentage / 100), 0) AS gebruikt_bytes,
+                   SUM(CASE WHEN s.gebruik_percentage >= 90 THEN 1 ELSE 0 END) AS kritiek
+            FROM schijfgebruik_schijven s
+        ")->fetch();
+
+        return [
+            'devices' => (int) ($row['devices'] ?? 0),
+            'totaalTb' => round(((float) ($row['totaal_bytes'] ?? 0)) / 1e12, 1),
+            'gebruiktTb' => round(((float) ($row['gebruikt_bytes'] ?? 0)) / 1e12, 1),
+            'kritiek' => (int) ($row['kritiek'] ?? 0),
+        ];
+    }
+
     /** @return array<int, array<string, mixed>> één rij per schijf, met de bijbehorende apparaatgegevens erbij gejoined. */
     public static function allWithDevice(): array
     {

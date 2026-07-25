@@ -10,10 +10,16 @@
 /** @var array $gebruikers */
 /** @var array $cyberCategorieen */
 /** @var array $cyberPrioriteiten */
-/** @var array|null $laatsteTelefoonlijst */
 /** @var array $urenstaatLocaties */
 /** @var array|null $urenstaatOpen */
 /** @var int $mailmindInReview */
+/** @var array|null $kennisbankStats */
+/** @var array|null $mailmindStats */
+/** @var array|null $verbeterpuntStats */
+/** @var array|null $voorraadStats */
+/** @var array|null $uitgifteStats */
+/** @var array|null $cyberPrioriteitStats */
+/** @var array|null $schijfgebruikStats */
 
 require_once APP_ROOT . '/app/Views/partials/ticket-helpers.php';
 
@@ -190,12 +196,15 @@ if ($mag['printers']['lezen']) {
 </div>
 <?php endif; ?>
 
-<?php if ($mag['uitgiften']['lezen'] && !empty($topUitgegevenHardware)): ?>
+<?php if ($mag['uitgiften']['lezen']): ?>
 <div class="card">
     <div class="card-header">
         <span class="card-title">Top 5 uitgegeven hardware</span>
         <a class="btn" href="/uitgiften">Alle uitgiften &rarr;</a>
     </div>
+    <?php if (empty($topUitgegevenHardware)): ?>
+        <div class="empty-state">Nog geen uitgiften geregistreerd.</div>
+    <?php else: ?>
     <div class="row-list">
         <?php foreach ($topUitgegevenHardware as $t): ?>
             <a class="row-list-item" href="/voorraad?type_naam=<?= urlencode($t['naam'] ?? '') ?>">
@@ -205,26 +214,261 @@ if ($mag['printers']['lezen']) {
             </a>
         <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
-<div class="card">
-    <div class="card-header">
-        <span class="card-title">Laatste telefoonlijst</span>
-    </div>
-    <div style="padding:16px 20px">
-        <?php if ($laatsteTelefoonlijst === null): ?>
-            <div class="kpi-sublabel mb-2">Nog geen telefoonlijst verwerkt.</div>
-            <a class="btn btn-sm btn-outline-secondary" href="/tools/telefoonlijst">Openen</a>
-        <?php else: ?>
-            <div class="kpi-sublabel mb-2">
-                <?= formatDatumTijd($laatsteTelefoonlijst['processed_at']) ?> &middot;
-                <?= (int) $laatsteTelefoonlijst['contact_count'] ?> contact(en)
+<?php if ($kennisbankStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Kennisbank</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/kennisbank">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Artikelen</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-book"></i></span>
             </div>
-            <a class="btn btn-sm btn-primary" href="/tools/telefoonlijst/<?= (int) $laatsteTelefoonlijst['id'] ?>/download">Download .vcf</a>
-        <?php endif; ?>
+            <div class="kpi-value"><?= (int) $kennisbankStats['artikelen'] ?></div>
+        </a>
+        <a class="kpi-card" href="/email-verwerking/review">
+            <div class="kpi-card-head">
+                <span class="kpi-label">AI-concepten</span>
+                <span class="kpi-icon kpi-icon-wachtend"><i class="bi bi-stars"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $kennisbankStats['aiConcepten'] ?></div>
+        </a>
+        <a class="kpi-card" href="/kennisbank">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Categorieën</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-tags"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $kennisbankStats['categorieen'] ?></div>
+        </a>
+        <a class="kpi-card" href="/kennisbank">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Verouderd (&gt;6 mnd)</span>
+                <span class="kpi-icon kpi-icon-risk"><i class="bi bi-hourglass-bottom"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $kennisbankStats['verouderd'] ?></div>
+        </a>
     </div>
-</div>
+</section>
+<?php endif; ?>
+
+<?php if ($mailmindStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">MailMind</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/email-verwerking">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Mails ontvangen</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-envelope"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $mailmindStats['ontvangen'] ?></div>
+        </a>
+        <a class="kpi-card" href="/email-verwerking">
+            <div class="kpi-card-head">
+                <span class="kpi-label">AI-analyse</span>
+                <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-cpu"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $mailmindStats['aiAnalyse'] ?></div>
+        </a>
+        <a class="kpi-card" href="/email-verwerking/review">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Conceptartikelen</span>
+                <span class="kpi-icon kpi-icon-wachtend"><i class="bi bi-file-earmark-text"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $mailmindStats['conceptArtikel'] ?></div>
+        </a>
+        <a class="kpi-card" href="/kennisbank">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Gepubliceerd</span>
+                <span class="kpi-icon kpi-icon-opgelost"><i class="bi bi-check-circle"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $mailmindStats['gepubliceerd'] ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($verbeterpuntStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Verbeterpunten</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/verbeterpunten">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Voorgesteld</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-lightbulb"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $verbeterpuntStats['voorgesteld'] ?></div>
+        </a>
+        <a class="kpi-card" href="/verbeterpunten">
+            <div class="kpi-card-head">
+                <span class="kpi-label">In uitvoering</span>
+                <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-arrow-repeat"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $verbeterpuntStats['inUitvoering'] ?></div>
+        </a>
+        <a class="kpi-card" href="/verbeterpunten">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Afgerond dit kwartaal</span>
+                <span class="kpi-icon kpi-icon-opgelost"><i class="bi bi-check-circle"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $verbeterpuntStats['afgerondDitKwartaal'] ?></div>
+        </a>
+        <a class="kpi-card" href="/verbeterpunten">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Gem. doorlooptijd</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-stopwatch"></i></span>
+            </div>
+            <div class="kpi-value"><?= $verbeterpuntStats['doorlooptijd'] !== null ? htmlspecialchars(str_replace('.', ',', (string) $verbeterpuntStats['doorlooptijd'])) . 'd' : '—' ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($voorraadStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Voorraad</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/voorraad">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Artikeltypen</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-tags"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $voorraadStats['typen'] ?></div>
+        </a>
+        <a class="kpi-card" href="/voorraad">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Totaal</span>
+                <span class="kpi-icon kpi-icon-open"><i class="bi bi-boxes"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $voorraadStats['totaal'] ?></div>
+        </a>
+        <a class="kpi-card" href="/voorraad?status=uitgegeven">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Uit voorraad</span>
+                <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-box-arrow-right"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $voorraadStats['uitgegeven'] ?></div>
+        </a>
+        <a class="kpi-card" href="/voorraad?status=afgeschreven">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Afgeschreven</span>
+                <span class="kpi-icon kpi-icon-risk"><i class="bi bi-trash"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $voorraadStats['afgeschreven'] ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($uitgifteStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Uitgifte</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/uitgiften">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Totaal uitgifte</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-box-seam"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $uitgifteStats['totaal'] ?></div>
+        </a>
+        <a class="kpi-card" href="/uitgiften?status=uitgegeven">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Openstaand</span>
+                <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-arrow-up-right"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $uitgifteStats['openstaand'] ?></div>
+        </a>
+        <a class="kpi-card" href="/uitgiften">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Deze week</span>
+                <span class="kpi-icon kpi-icon-open"><i class="bi bi-calendar-week"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $uitgifteStats['dezeWeek'] ?></div>
+        </a>
+        <a class="kpi-card" href="/uitgiften?status=geretourneerd">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Geretourneerd</span>
+                <span class="kpi-icon kpi-icon-opgelost"><i class="bi bi-arrow-return-left"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $uitgifteStats['geretourneerd'] ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($cyberPrioriteitStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Cyberrisico's naar prioriteit</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/cyberrisicos?prioriteit=laag">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Laag</span>
+                <span class="kpi-icon kpi-icon-risk-laag"><i class="bi bi-shield-check"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $cyberPrioriteitStats['laag'] ?></div>
+        </a>
+        <a class="kpi-card" href="/cyberrisicos?prioriteit=middel">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Middel</span>
+                <span class="kpi-icon kpi-icon-risk-middel"><i class="bi bi-shield-exclamation"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $cyberPrioriteitStats['middel'] ?></div>
+        </a>
+        <a class="kpi-card" href="/cyberrisicos?prioriteit=hoog">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Hoog</span>
+                <span class="kpi-icon kpi-icon-risk-hoog"><i class="bi bi-shield-exclamation"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $cyberPrioriteitStats['hoog'] ?></div>
+        </a>
+        <a class="kpi-card" href="/cyberrisicos?prioriteit=kritiek">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Kritiek</span>
+                <span class="kpi-icon kpi-icon-risk-kritiek"><i class="bi bi-shield-x"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $cyberPrioriteitStats['kritiek'] ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
+
+<?php if ($schijfgebruikStats !== null): ?>
+<section class="mb-3">
+    <h2 class="h6 mb-3">Schijfgebruik</h2>
+    <div class="kpi-grid kpi-grid-sm">
+        <a class="kpi-card" href="/schijfgebruik">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Apparaten</span>
+                <span class="kpi-icon kpi-icon-neutral"><i class="bi bi-pc-display"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $schijfgebruikStats['devices'] ?></div>
+        </a>
+        <a class="kpi-card" href="/schijfgebruik">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Totaal</span>
+                <span class="kpi-icon kpi-icon-open"><i class="bi bi-hdd"></i></span>
+            </div>
+            <div class="kpi-value"><?= htmlspecialchars(str_replace('.', ',', (string) $schijfgebruikStats['totaalTb'])) ?> TB</div>
+        </a>
+        <a class="kpi-card" href="/schijfgebruik">
+            <div class="kpi-card-head">
+                <span class="kpi-label">Gebruikt</span>
+                <span class="kpi-icon kpi-icon-behandeling"><i class="bi bi-pie-chart"></i></span>
+            </div>
+            <div class="kpi-value"><?= htmlspecialchars(str_replace('.', ',', (string) $schijfgebruikStats['gebruiktTb'])) ?> TB</div>
+        </a>
+        <a class="kpi-card" href="/schijfgebruik?min_gebruik=90">
+            <div class="kpi-card-head">
+                <span class="kpi-label">&ge;90% vol</span>
+                <span class="kpi-icon kpi-icon-risk"><i class="bi bi-exclamation-triangle"></i></span>
+            </div>
+            <div class="kpi-value"><?= (int) $schijfgebruikStats['kritiek'] ?></div>
+        </a>
+    </div>
+</section>
+<?php endif; ?>
 
 <?php if (!empty($shortcuts)): ?>
 <section>
@@ -500,12 +744,12 @@ if ($mag['printers']['lezen']) {
 <style>
     .chart-wrap {
         position: relative;
-        height: 220px;
+        height: 110px;
     }
 
     @media (max-width: 575.98px) {
         .chart-wrap {
-            height: 200px;
+            height: 100px;
         }
     }
 </style>

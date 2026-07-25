@@ -161,4 +161,17 @@ class MedewerkerModel extends Model
         $stmt->execute(['%' . $q . '%']);
         return array_column($stmt->fetchAll(), 'naam');
     }
+
+    /** Globale zoekbalk (zie App\Shared\Search\SearchService) — zoekt op naam, e-mail en functie. */
+    public static function search(string $q, int $limit = 5): array
+    {
+        $stmt = Database::pdo()->prepare(
+            "SELECT id, CONCAT(voornaam, ' ', achternaam) AS naam, functie FROM medewerkers
+             WHERE deleted_at IS NULL AND (CONCAT(voornaam, ' ', achternaam) LIKE ? OR email LIKE ? OR functie LIKE ?)
+             ORDER BY achternaam ASC LIMIT " . (int) $limit
+        );
+        $needle = '%' . $q . '%';
+        $stmt->execute([$needle, $needle, $needle]);
+        return $stmt->fetchAll();
+    }
 }

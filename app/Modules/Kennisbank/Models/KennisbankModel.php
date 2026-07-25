@@ -23,6 +23,19 @@ class KennisbankModel extends Model
         return Database::pdo()->query(self::SELECT . ' ORDER BY k.created_at DESC')->fetchAll();
     }
 
+    /** Globale zoekbalk (zie App\Shared\Search\SearchService) — geen scope-autorisatie per item, zie klasse-docblock elders. */
+    public static function search(string $q, int $limit = 5): array
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT id, titel, categorie FROM kennisbank_artikelen
+             WHERE deleted_at IS NULL AND (titel LIKE ? OR samenvatting LIKE ? OR tags LIKE ?)
+             ORDER BY created_at DESC LIMIT ' . (int) $limit
+        );
+        $needle = '%' . $q . '%';
+        $stmt->execute([$needle, $needle, $needle]);
+        return $stmt->fetchAll();
+    }
+
     /** Zelfde regel als TicketModel::alleenGewijzigdeVelden(): lege/ongewijzigde velden niet meesturen in een update. */
     public static function alleenGewijzigdeVelden(array $huidig, array $nieuw): array
     {
@@ -46,6 +59,16 @@ class KennisbankModel extends Model
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row === false ? null : $row;
+    }
+
+    /** Artikelen die al langer dan X maanden niet meer bijgewerkt zijn — voor de dashboard-KPI. */
+    public static function countOutdated(int $maanden = 6): int
+    {
+        $stmt = Database::pdo()->prepare(
+            'SELECT COUNT(*) FROM kennisbank_artikelen WHERE deleted_at IS NULL AND updated_at < DATE_SUB(NOW(), INTERVAL ? MONTH)'
+        );
+        $stmt->execute([$maanden]);
+        return (int) $stmt->fetchColumn();
     }
 
     /** Bestaande categorieën, voor het voorstellen van dezelfde naam bij tickets (zie TicketController). */

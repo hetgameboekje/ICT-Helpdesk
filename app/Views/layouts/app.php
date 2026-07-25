@@ -50,14 +50,26 @@ $active = $activeModule ?? '';
                 <?php endif; ?>
                 <div class="topbar-title"><?= htmlspecialchars($pageTitle ?? 'Intranet') ?></div>
             </div>
-            <!-- Nog niet functioneel: geen backend-zoekindex over tickets/medewerkers/KB — zie
-                 CLAUDE.md > "Nog te herdesignen/uit te werken met Lovable". Zuiver visueel, zoals in de mockup. -->
-            <div class="topbar-search d-none d-lg-flex">
+            <button type="button" class="topbar-search d-none d-lg-flex" id="globalSearchTrigger">
                 <i class="bi bi-search"></i>
-                <input type="text" placeholder="Zoek tickets, medewerkers, KB-artikelen&hellip;" disabled>
+                <span class="topbar-search-placeholder">Zoek tickets, medewerkers, KB-artikelen&hellip;</span>
                 <kbd>&#8984;K</kbd>
-            </div>
+            </button>
         </header>
+
+        <div class="global-search-backdrop" id="globalSearchBackdrop" hidden></div>
+        <div class="global-search-panel" id="globalSearchPanel" role="dialog" aria-modal="true" aria-label="Zoeken" hidden>
+            <div class="global-search-panel-header">
+                <i class="bi bi-search"></i>
+                <input type="text" id="globalSearchInput" placeholder="Zoek tickets, medewerkers, KB-artikelen&hellip;" autocomplete="off">
+                <kbd>ESC</kbd>
+            </div>
+            <div class="global-search-body" id="globalSearchResults"></div>
+            <div class="global-search-footer">
+                <span><i class="bi bi-command"></i> K om te openen</span>
+                <span id="globalSearchCount"></span>
+            </div>
+        </div>
 
         <main class="main<?= $active === 'dashboard' ? ' page-dashboard' : '' ?>">
             <?= $content ?>
@@ -68,6 +80,7 @@ $active = $activeModule ?? '';
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="/assets/js/app.js"></script>
+<script type="module" src="/assets/js/global-search.js"></script>
 <script>
 (function () {
     var sidebar = document.getElementById('appSidebar');

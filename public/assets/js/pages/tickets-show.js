@@ -226,7 +226,11 @@ function render(state) {
 
 function wireEvents(state) {
     const markBtn = document.getElementById('markAfgehandeldBtn');
-    if (markBtn) markBtn.addEventListener('click', () => saveLog({ status: 'afgehandeld' }));
+    if (markBtn) markBtn.addEventListener('click', () => {
+        const titel = document.getElementById('opmerkingTitel').value.trim();
+        const opmerking = document.getElementById('opmerkingTekst').value.trim();
+        saveLog({ status: 'afgehandeld', titel, opmerking });
+    });
 
     document.getElementById('opmerkingOpslaanBtn').addEventListener('click', () => {
         const titel = document.getElementById('opmerkingTitel').value.trim();
@@ -240,7 +244,11 @@ function wireEvents(state) {
     });
 
     document.querySelectorAll('.status-picker button[data-status]').forEach((btn) => {
-        btn.addEventListener('click', () => saveLog({ status: btn.dataset.status }));
+        btn.addEventListener('click', () => {
+            const titel = document.getElementById('opmerkingTitel').value.trim();
+            const opmerking = document.getElementById('opmerkingTekst').value.trim();
+            saveLog({ status: btn.dataset.status, titel, opmerking });
+        });
     });
 
     document.getElementById('escalatieOpslaanBtn').addEventListener('click', () => {

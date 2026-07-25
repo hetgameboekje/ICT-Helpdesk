@@ -317,10 +317,44 @@ niet-browserclients (CLI/desktop/Android). Nieuwe onderdelen:
   en `/api/v1/kennisbank` werken met alleen de bearer-header (geen sessiecookie), `requirePermission()`
   weigert een token zonder rechten net als een sessie zou doen (403), een POST met bearer-token en zónder
   CSRF-header komt voorbij `requireCsrf()`, en na `logout` geeft hetzelfde token weer 401.
-- **Nog niet gebouwd:** geen tokenoverzicht/-intrekscherm in Beheer (nu alleen via directe DB-query of
-  een toekomstig `GET /api/v1/auth/tokens`), geen token-expiry (tokens blijven geldig tot expliciet
-  ingetrokken), en de overige 16 modules hebben nog steeds geen `/api/v1/*`-laag — dit lost alleen het
-  auth-blokkerende punt op, niet de functionaliteitsdekking (zie "API-laag"-sectie in README.md).
+- **Nog niet gebouwd:** geen token-expiry (tokens blijven geldig tot expliciet ingetrokken), geen
+  UI-scherm in Beheer dat `GET /api/v1/auth/tokens` gebruikt (de endpoint bestaat inmiddels, zie
+  hieronder, maar niets rendert hem nog), en de overige modules zonder `/api/v1/*`-laag (Agenda,
+  Urenstaat, Beheer, Tools, EmailVerwerking, Account) — dit lost alleen het auth-blokkerende punt op,
+  niet de volledige functionaliteitsdekking.
+
+**Update (2026-07-25) — multi-surface-readiness-pas over de bestaande `/api/v1/*`-laag:** met het oog
+op een toekomstige tweede presentatielaag (mobiel/CLI) is de bestaande laag gecontroleerd op wat een
+niet-browserclient nog misste, en zijn de concrete gaten gedicht (geen bredere refactor):
+- Twee dubbel geregistreerde routeblokken in `public/index.php` opgeruimd (hardware-uitgaven en
+  medewerkers stonden per ongeluk twee keer geregistreerd — dode code, geen gedragswijziging).
+- `GET /api/v1/auth/me` — huidige gebruiker ophalen met alleen een bearer-token (of sessiecookie),
+  zodat een client na het bewaren van het token later het profiel kan verversen zonder opnieuw in te
+  loggen. `GET /api/v1/auth/tokens` (lijst eigen actieve tokens: naam/prefix/laatst gebruikt) en
+  `DELETE /api/v1/auth/tokens/{id}` (eigen token intrekken bij id) — `PersonalAccessTokenModel` kreeg
+  hiervoor `actieveVoorGebruiker()`/`intrekkenVoorGebruiker()`.
+- **Create/update alsnog toegevoegd aan drie voorheen read-only modules**, waar de logica al in de
+  oude server-rendered `*Controller.php` bestond maar nooit naar de Service-laag was geport:
+  - **Scripts** (`ScriptService::create()`/`update()` + `POST /api/v1/scripts`, `PUT .../{id}`).
+  - **Medewerkers** (`MedewerkerService::create()`/`update()`, incl. dezelfde e-mail→user_id-koppeling
+    als `MedewerkerController::gekoppeldeUserId()`, + `POST /api/v1/medewerkers`, `PUT .../{id}`).
+    Voegt ook een verplichte-veldcheck (voornaam/achternaam/email) toe die de oude controller niet had
+    — nodig omdat een niet-browserclient niet op HTML-formuliervalidatie kan leunen.
+  - **Voorraad** (`VoorraadService::create()`/`update()`, incl. dezelfde serienummer-uniekheid en
+    barcode-opbouw als `VoorraadController`, + `POST /api/v1/voorraad`, `PUT .../{id}`). **Bewuste
+    beperking:** geen DxDiag-bestandsupload via de API — dat is een multipart-upload, past niet in de
+    JSON-envelope van deze laag. Een DxDiag-rapport toevoegen blijft op het oude formulier
+    (`/voorraad/{id}/edit`); de kernvelden (type/variant/serienummer/locatie/opmerking, incl.
+    bulk-`aantal` bij create) zijn wel via de API te zetten.
+- **Bewust niet aangepakt in deze pas** (zou de gelijktijdig lopende Lovable-frontendconversie kunnen
+  raken, dus niet zonder afstemming): de `meta`-sleutel bij lijst-endpoints heet per module anders voor
+  hetzelfde soort data (`statusCounts` bij Tickets/CyberRisico's, `kpis` bij Voorraad, `stats` bij
+  Medewerkers, `typeCounts` bij Scripts) en `filterOptions` ontbreekt bij een deel van de modules die
+  wel filterbare velden hebben. Dit normaliseren zou de al bestaande frontend-JS
+  (`public/assets/js/pages/*.js`) moeten meeveranderen — pas oppakken als bewuste, aparte stap.
+- Lokaal geverifieerd: `php -l` schoon op alle gewijzigde bestanden, server boot zonder fatale fouten,
+  alle nieuwe/gewijzigde routes geven zonder sessie een nette `401`-envelope (geen crash). Geen
+  ingelogde end-to-end-test (geen lokale DB in deze omgeving).
 
 **Belangrijk — `docs/design/*.tsx` staat niet betrouwbaar synchroon met Lovable, gebruik altijd de
 Lovable MCP:** `docs/design/modules.kennisbank.tsx` bleek bij de conversie hieronder de verkeerde
@@ -555,6 +589,60 @@ te transpilen), niet in een echte browser geklikt.
 **Geleverd — E-mail & kennisbank verwerking / MailMind** (alle 5 fases, gecontroleerd tegen de code en smoke-getest tegen een lokale database): nieuwe module `app/Modules/EmailVerwerking` met 7 tabellen (`email_import_batches`, `imported_emails`, `email_attachments`, `email_ai_analysis`, `kb_article_drafts`, `kb_article_sources`, `processing_logs`), webhook `POST /api/email-import/inbound` (scope `email_import`), cron `POST /api/email-analysis/verwerken` (scope `email_analysis`), UI onder `/email-verwerking` (rechtenmatrix-module `email_verwerking`, ook toegevoegd aan de Service-dropdown in de navigatie). De Outlook-intake (`outlook_intake.py`) post eindgebruikersmail voortaan ook naar de nieuwe pipeline naast de bestaande ticketaanmaak (best-effort, blokkeert tickets niet bij falen). **Update:** de classificatie loopt niet meer via een directe AI-provider-call, maar via een externe n8n-webhook (`Services\AiAnalysisService`, env `N8N_WEBHOOK_URL`/`N8N_API_KEY`) — n8n verzorgt ingestie, extractie, kennis-koppeling en internet-lookup, en moet exact het JSON-schema teruggeven dat `analyseer()` afdwingt. **Nog niet gedaan:** `N8N_WEBHOOK_URL` is nergens ingevuld — zonder webhook-URL blijft elke e-mail hangen op status `failed` met een duidelijke reden in `processing_logs` (fail-safe, geen crash), en moet de n8n-workflow zelf nog gebouwd en getest worden. `kb_article_drafts.kennisbank_artikel_id`/`reviewer_id` hebben bewust geen DB-niveau FOREIGN KEY (zie het commentaar in `database/xml/kb_article_drafts.xml`) — zelfde aanpak als `kennisbank_artikelen.auteur_id`/`tickets.behandelaar_id`, omdat sommige lokale databases hier al gemigreerd zijn naar een ander kolomtype dan `SchemaParser::LEGACY_PLAIN_INT_TABLES` aanneemt.
 
 **Open aandachtspunt:** de categorie-zoekfunctie (Ticket/Kennisbank/Verbeterpunt) gebruikt een debounce van ~200ms i.p.v. de gewenste ~2s — verhogen als dit te veel requests tijdens typen oplevert.
+
+**Dashboard/navbar/agenda-feedbackronde (2026-07-25):** reeks losse UI-bugs en dashboard-uitbreidingen
+op basis van gebruikersfeedback na de Lovable-rollout hierboven.
+- **Navbar-topbar-zoekbalk**: het zoekicoon overlapte de placeholdertekst — `.topbar-search i` miste
+  de verticale centrering (`top:50%;transform:translateY(-50%)`) die de identieke sidebar-zoekbalk
+  wel al had; nu gelijkgetrokken (`app.css`).
+- **Scrollbar-sprong bij navigeren**: klikken in de sidebar liet de pagina-inhoud zijwaarts
+  verspringen zodra een pagina met/zonder verticale scrollbar werd geladen. Opgelost met
+  `html{overflow-y:scroll;scrollbar-gutter:stable}` — reserveert altijd ruimte voor de scrollbar
+  i.p.v. hem alleen te tonen als de pagina lang genoeg is.
+- **Dashboard — "Laatste telefoonlijst"-kaart verwijderd** (niet informatief genoeg, gebruikersfeedback)
+  incl. de bijbehorende `PhonebookJobModel`-aanroep in `DashboardController`.
+- **Dashboard — cyberrisico-grafiek 50% kleiner** (`chart-wrap`-hoogte 220px → 110px).
+- **Dashboard — nieuwe KPI-rijen** voor Kennisbank, MailMind, Verbeterpunten, Voorraad, Uitgifte,
+  Cyberrisico's (naar prioriteit) en Schijfgebruik, elk als eigen `<section>` met een `kpi-grid`
+  (nieuwe compactere `.kpi-grid-sm`-variant + `.kpi-icon-risk-laag/-middel/-hoog/-kritiek`). Nieuwe
+  modelmethodes: `KennisbankModel::countOutdated()`, `VerbeterpuntModel::telPerStatus()` +
+  `countAfgerondDitKwartaal()` + `gemiddeldeDoorlooptijdDagen()` (nieuwe metriek — bestond nog
+  nergens in de codebase, TIMESTAMPDIFF over created_at→updated_at als enige beschikbare proxy, er
+  is geen apart "afgerond_op"-veld), `VoorraadItemModel::countAll()` + `telPerStatus()`,
+  `UitgifteModel::countAll()` + `countOpen()` + `countDezeWeek()` + `countGeretourneerd()`,
+  `CyberRisicoModel::countByPrioriteit()`, `SchijfgebruikSchijfModel::dashboardStats()`.
+  **Bewuste afwijkingen van de letterlijke aanvraag** (zelfde regel als de Lovable-conversies
+  hierboven — geen tegel bouwen op data die niet bestaat):
+  - Kennisbank: "views deze week" bestaat niet (geen view-telkolom op `kennisbank_artikelen`,
+    bevestigd — zie ook de eerdere Kennisbank-conversie hierboven die hetzelfde al constateerde) —
+    vervangen door "Categorieën" (`KennisbankModel::distinctCategorieen()`), zelfde substitutie als
+    eerder gekozen voor de Kennisbank-module zelf.
+  - Voorraad: "onder minimum" bestaat niet — `voorraad_items` heeft geen aantal/minimumkolom (bewust
+    zo ontworpen, zie de Voorraad-sectie hierboven: stuksgewijs geserialiseerd, geen
+    voorraadbeheer-met-aantallen). Vervangen door "Afgeschreven" (`status = 'afgeschreven'`, een
+    echt bestaande status).
+- **Agenda — `initialView` ontbrak**: de FullCalendar-toolbar toonde "Week" als actief, maar de
+  kalender zelf opende altijd in maandweergave omdat `initialView` nergens gezet was in de
+  `FullCalendar.Calendar(...)`-config — nu `initialView:'timeGridWeek'`.
+  **Weergave-tabs vervangen (Maand/Week/Dag → Dag/Week/Team)**: de Lovable-bron
+  (`src/routes/modules.agenda.tsx`, opgehaald via de Lovable MCP) heeft geen maandweergave-tab —
+  alleen Dag/Week/**Team**. Onze "Team"-tab is geen FullCalendar resource-timeline (dat vereist een
+  betaalde Scheduler-licentie) maar hergebruikt de al bestaande `/agenda/team-events`-endpoint
+  (voorheen alleen bereikbaar via de nu verwijderde "Alle gebruikers"-checkbox) in een `timeGridDay`-
+  weergave — een echte, werkende invulling i.p.v. de checkbox-toggle die de mockup niet toont. De
+  "Alleen tickets 'in behandeling'"-checkbox verschijnt nu alleen in Team-modus (was altijd zichtbaar
+  maar had buiten teamweergave om geen effect).
+  **Nog niet gedaan (buiten scope van deze bugfixronde):** een volledige pixel-voor-pixel
+  Lovable-restyle van de agenda-toolbar/kaarten is niet uitgevoerd — er was geen browsersessie
+  beschikbaar in deze omgeving om het resultaat visueel te verifiëren, en een blinde CSS-herschrijving
+  zonder verificatie past niet bij de "klik erdoorheen en verifieer"-regel die de rest van de
+  Lovable-rollout volgt. Aanbevolen vervolgstap: visuele klik-door-test in een omgeving met browser,
+  daarna gerichte CSS-fixes voor de concrete "buttons zien er raar uit"-klacht.
+- Lokaal geverifieerd: `php -l` schoon op alle gewijzigde bestanden (DashboardController, dashboard-
+  view, alle gewijzigde Model-klassen, Agenda-view); een aparte Explore-subagent bevestigde dat alle
+  querystring-filters achter de nieuwe dashboard-KPI-links (`?status=`, `?prioriteit=`,
+  `?min_gebruik=`) al door de generieke `TableQuery`-filter van `CrudController::index()` ondersteund
+  worden. Geen ingelogde browser-klik-door-test (geen lokale DB/browser beschikbaar in deze omgeving).
 
 **Losse verkenning — geocoding/routing API (geen fase toegewezen):** nog te onderzoeken voor een eventuele reistijd-indicatie bij Urenstaat/locaties; coördinaten worden nu handmatig ingevuld naast het adresveld (zie `LocatieModel`). Geen API-integratie bouwen totdat hier bewust voor gekozen wordt.
 - OpenCage Geocoding API voor adres → coördinaten (`api.opencagedata.com/geocode/v1/json`); vereist eigen API-key, rate limits nog niet uitgezocht.

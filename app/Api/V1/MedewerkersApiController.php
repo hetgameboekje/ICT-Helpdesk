@@ -35,6 +35,29 @@ class MedewerkersApiController extends ApiController
         });
     }
 
+    public function store(): void
+    {
+        $this->handle(function () {
+            $user = $this->requireAuth();
+            $this->requirePermission($user, 'medewerkers', 'schrijven');
+            $this->requireCsrf();
+
+            $id = $this->service->create($this->jsonBody());
+            $this->success($this->service->find($id), status: 201);
+        });
+    }
+
+    public function update(int $id): void
+    {
+        $this->handle(function () use ($id) {
+            $user = $this->requireAuth();
+            $this->requirePermission($user, 'medewerkers', 'schrijven');
+            $this->requireCsrf();
+
+            $this->success($this->service->update($id, $this->jsonBody()));
+        });
+    }
+
     public function destroy(int $id): void
     {
         $this->handle(function () use ($id) {

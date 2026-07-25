@@ -142,6 +142,7 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
+html{overflow-y:scroll;scrollbar-gutter:stable}
 body{font-family:var(--font-body);font-size:14px;color:var(--color-text-primary);background:var(--color-background-tertiary)}
 a{color:inherit;text-decoration:none}
 .mono{font-family:var(--font-mono)}
@@ -212,13 +213,49 @@ a{color:inherit;text-decoration:none}
 .topbar-titles{flex:1;min-width:0}
 .topbar-breadcrumb{font-size:11px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:.02em}
 .topbar-title{font-family:var(--font-display);font-size:15px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topbar-search{position:relative;align-items:center;width:340px;max-width:100%}
-.topbar-search i{position:absolute;left:11px;font-size:13px;color:var(--color-text-tertiary)}
-.topbar-search input{width:100%;padding:7px 44px 7px 32px;font-size:13px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border:1px solid transparent;color:var(--color-text-primary)}
-.topbar-search input::placeholder{color:var(--color-text-tertiary)}
-.topbar-search kbd{position:absolute;right:8px;font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:1px 5px}
+.topbar-search{appearance:none;position:relative;align-items:center;width:340px;max-width:100%;cursor:text;font-family:inherit;padding:7px 8px 7px 11px;gap:8px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border:1px solid transparent}
+.topbar-search:hover{background:var(--color-background-tertiary)}
+.topbar-search i{font-size:13px;color:var(--color-text-tertiary)}
+.topbar-search-placeholder{flex:1;text-align:left;font-size:13px;color:var(--color-text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-search kbd{font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:1px 5px}
 
 @media (max-width:576px){.topbar-search{display:none !important}}
+
+/* Command-palette-stijl overlay (ontworpen via de Lovable MCP, 2026-07-25 — zie CLAUDE.md
+   "API-architectuur" voor de reden dat dit géén 1-op-1-conversie van een bestaand scherm is: er
+   bestond geen werkende zoekfunctie in de mockup om over te zetten). Backdrop + paneel zijn losse,
+   position:fixed elementen buiten .topbar-search om — daardoor kan de pagina er nooit door
+   verschuiven, ongeacht wat er in het zoekresultatenpaneel wordt gerenderd. */
+.global-search-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(2px);z-index:1040}
+.global-search-panel{position:fixed;left:50%;top:12vh;transform:translateX(-50%);width:min(92vw,640px);max-height:76vh;display:flex;flex-direction:column;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;z-index:1050}
+.global-search-panel-header{display:flex;align-items:center;gap:8px;padding:0 16px;height:48px;border-bottom:0.5px solid var(--color-border-secondary);flex-shrink:0}
+.global-search-panel-header i{font-size:14px;color:var(--color-text-tertiary)}
+.global-search-panel-header input{flex:1;background:transparent;border:0;outline:0;font-size:13px;color:var(--color-text-primary)}
+.global-search-panel-header input::placeholder{color:var(--color-text-tertiary)}
+.global-search-panel-header kbd{font-family:var(--font-mono);font-size:10px;color:var(--color-text-tertiary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:2px 6px}
+
+.global-search-body{overflow-y:auto;padding:8px}
+.global-search-hint,.global-search-empty{padding:32px 16px;text-align:center;font-size:13px;color:var(--color-text-tertiary)}
+.global-search-empty-icon{display:grid;place-items:center;width:40px;height:40px;margin:0 auto 10px;border-radius:50%;background:var(--color-background-secondary);font-size:16px;color:var(--color-text-tertiary)}
+.global-search-empty-title{font-size:13px;font-weight:600;color:var(--color-text-primary)}
+
+.global-search-group + .global-search-group{margin-top:4px;padding-top:4px}
+.global-search-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-tertiary);padding:10px 8px 4px}
+.global-search-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;color:var(--color-text-primary);text-decoration:none;font-size:13px}
+.global-search-item:hover,.global-search-item:focus{background:var(--color-background-secondary);outline:none}
+.global-search-item-icon{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border-radius:var(--border-radius-md);font-size:14px}
+.global-search-item-icon-ticket{background:var(--color-status-open-bg);color:var(--color-status-open)}
+.global-search-item-icon-medewerker{border-radius:50%;background:var(--color-background-secondary);color:var(--color-text-primary);font-size:11px;font-weight:600}
+.global-search-item-icon-kennisbank{background:color-mix(in oklch, var(--color-primary) 15%, transparent);color:var(--color-primary)}
+.global-search-item-body{min-width:0;flex:1}
+.global-search-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.global-search-item-sub{margin-top:1px;font-size:11px;color:var(--color-text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.global-search-item-sub .badge{font-size:10px;padding:1px 6px}
+.global-search-item-chevron{flex-shrink:0;font-size:13px;color:var(--color-text-tertiary);opacity:0;transition:opacity .1s}
+.global-search-item:hover .global-search-item-chevron,.global-search-item:focus .global-search-item-chevron{opacity:1}
+
+.global-search-footer{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:34px;border-top:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);font-size:11px;color:var(--color-text-tertiary);flex-shrink:0}
+.global-search-footer i{margin-right:4px}
 
 /* width:100% is nodig naast max-width/margin:auto: .main is een flex-item in .app-content
    (flex-direction:column, zie sidebar/topbar-layout). Auto-marges op een flex-item overschrijven
@@ -264,7 +301,10 @@ table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:560px}
 .col-1{width:90px}
 .col-2{width:150px}
 .col-3{width:170px}
-th{font-size:11px;font-weight:600;color:var(--color-text-secondary);padding:0;text-align:left;border-bottom:0.5px solid var(--color-border-tertiary);text-transform:uppercase;letter-spacing:.03em}
+th{font-size:11px;font-weight:600;color:var(--color-text-secondary);padding:8px 14px;text-align:left;border-bottom:0.5px solid var(--color-border-tertiary);text-transform:uppercase;letter-spacing:.03em}
+/* Sorteerbare headers (table-sort.js) wrappen het label in <a class="th-sort">, die zijn eigen
+   padding meekrijgt als klikgebied — de th zelf moet dan naar 0 zodat het label niet dubbel inspringt. */
+th:has(> a.th-sort){padding:0}
 th a.th-sort{display:flex;align-items:center;gap:4px;padding:8px 14px;color:inherit}
 th a.th-sort:hover{color:var(--color-text-primary)}
 .sort-arrow{font-size:10px;color:var(--color-text-info)}
@@ -431,6 +471,12 @@ a.kpi-card{cursor:pointer}
 .kpi-icon-opgelost{background:var(--color-status-opgelost-bg);color:var(--color-status-opgelost)}
 .kpi-icon-risk{background:var(--color-risk-hoog-bg);color:var(--color-risk-hoog)}
 .kpi-icon-neutral{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.kpi-icon-risk-laag{background:var(--color-risk-laag-bg);color:var(--color-risk-laag)}
+.kpi-icon-risk-middel{background:var(--color-risk-gemiddeld-bg);color:var(--color-risk-gemiddeld)}
+.kpi-icon-risk-hoog{background:var(--color-risk-hoog-bg);color:var(--color-risk-hoog)}
+.kpi-icon-risk-kritiek{background:var(--color-risk-kritiek-bg);color:var(--color-risk-kritiek)}
+.kpi-grid-sm .kpi-value{font-size:20px}
+.kpi-grid-sm .kpi-icon{width:26px;height:26px;font-size:12px}
 .kpi-value{font-size:26px;font-weight:700;letter-spacing:-.01em}
 .kpi-sublabel{font-size:11.5px;color:var(--color-text-tertiary);margin-top:2px}
 
@@ -468,6 +514,33 @@ a.kpi-card{cursor:pointer}
 .agenda-today-meta{font-size:11px;color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .agenda-now-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-primary);flex-shrink:0;padding-top:2px}
 .agenda-now-dot{width:6px;height:6px;border-radius:50%;background:var(--color-primary)}
+
+/* Agenda-module kalenderweergave (Lovable modules.agenda.tsx-stijl: custom toolbar + gedempte fc-restyle). */
+.agenda-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.agenda-toolbar-nav{display:flex;align-items:center;gap:4px}
+.agenda-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);font-size:13px}
+.agenda-icon-btn:hover{background:var(--color-background-secondary)}
+.agenda-today-btn{height:30px;padding:0 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);font-size:12px;font-weight:500}
+.agenda-today-btn:hover{background:var(--color-background-secondary)}
+.agenda-toolbar-title{font-size:13px;font-weight:600}
+.agenda-view-switch{display:flex;align-items:center;gap:2px;background:var(--color-background-secondary);padding:2px;border-radius:var(--border-radius-md)}
+.agenda-view-switch button{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0}
+.agenda-view-switch button.active{background:var(--color-text-primary);color:var(--color-background-primary)}
+.agenda-toolbar-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+.agenda-toolbar-check{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:400;color:var(--color-text-secondary);white-space:nowrap}
+
+.fc .fc-col-header-cell{background:var(--color-background-secondary)}
+.fc .fc-col-header-cell-cushion{padding:8px 6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);text-decoration:none}
+.fc .fc-timegrid-slot-label-cushion,.fc .fc-list-day-cushion{font-family:var(--font-mono);font-size:10.5px;color:var(--color-text-tertiary)}
+.fc .fc-scrollgrid,.fc td,.fc th{border-color:var(--color-border-tertiary)}
+.fc .fc-daygrid-day.fc-day-today,.fc .fc-timegrid-col.fc-day-today{background:color-mix(in srgb,var(--color-primary) 6%,transparent)}
+.fc .fc-daygrid-day-number,.fc .fc-timegrid-axis-cushion{font-size:11px;color:var(--color-text-secondary)}
+.fc-event.agenda-type-ticket,.fc-list-event.agenda-type-ticket{background:color-mix(in srgb,#e2a94a 18%,var(--color-background-primary));border-color:color-mix(in srgb,#e2a94a 55%,transparent);border-left:3px solid #e2a94a}
+.fc-event.agenda-type-verbeterpunt,.fc-list-event.agenda-type-verbeterpunt{background:color-mix(in srgb,#7ecb57 18%,var(--color-background-primary));border-color:color-mix(in srgb,#7ecb57 55%,transparent);border-left:3px solid #7ecb57}
+.fc-event.agenda-type-afspraak,.fc-list-event.agenda-type-afspraak{background:color-mix(in srgb,#378ADD 18%,var(--color-background-primary));border-color:color-mix(in srgb,#378ADD 55%,transparent);border-left:3px solid #378ADD}
+.fc-event.agenda-type-ticket .fc-event-title,.fc-event.agenda-type-ticket .fc-event-time,
+.fc-event.agenda-type-verbeterpunt .fc-event-title,.fc-event.agenda-type-verbeterpunt .fc-event-time,
+.fc-event.agenda-type-afspraak .fc-event-title,.fc-event.agenda-type-afspraak .fc-event-time{color:var(--color-text-primary);font-weight:500}
 
 .shortcut-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
 .shortcut-card{display:block;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);background:var(--color-background-primary);padding:14px;text-decoration:none;color:inherit;transition:border-color .15s ease,box-shadow .15s ease}

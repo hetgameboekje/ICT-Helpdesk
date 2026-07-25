@@ -6,13 +6,13 @@ import { actionMenuHtml, wireActionMenu, openSheet } from '/assets/js/ui/panel-m
  * (src/routes/modules.cyberrisico.tsx, via de Lovable MCP). Vervangt de eerdere server-rendered
  * index.php/show.php-inhoud.
  *
- * Afwijking t.o.v. de mockup: Lovable gaat uit van een kans(1-5) × impact(1-5)-risicomatrix met een
- * daarvan afgeleid niveau — die twee kolommen bestaan niet in ons datamodel. In plaats daarvan
- * hebben we een direct `prioriteit`-veld (laag/middel/hoog/kritiek) en een los `status`-veld
- * (nieuw/in_onderzoek/bevestigd/opgelost/geaccepteerd); de risicomatrix-widget is vervangen door
- * een statusbadge + een echt logboek (cyberrisico_logs, zelfde patroon als Tickets), en de
- * prioriteits-KPI's/badges gebruiken de bestaande --color-risk-*, badge-risico-*-tokens ("middel"
- * hergebruikt de "gemiddeld"-CSS-klasse, enige naam die niet 1-op-1 overeenkomt).
+ * Update: kans/impact (1-5) zijn inmiddels echte kolommen (database/xml/cyberrisicos.xml) — de
+ * risicomatrix-widget is dus niet langer weggelaten maar 1-op-1 uit de mockup overgenomen
+ * (kans x impact-grid met het geselecteerde vakje gemarkeerd). `prioriteit` blijft bestaan als
+ * opgeslagen, filterbaar veld maar wordt nu serverside afgeleid uit kans x impact
+ * (CyberRisicoService::prioriteitVanMatrix(), zelfde thresholds als Lovable's levelFrom()) i.p.v.
+ * handmatig gekozen. Statusbadge + logboek (cyberrisico_logs) blijven daarnaast bestaan, want
+ * `status` is een apart, echt workflow-veld dat in de mockup niet voorkomt.
  */
 
 function esc(value) {
@@ -30,6 +30,39 @@ const STATUS_LABELS = {
 };
 const PRIO_LABELS = { laag: 'Laag', middel: 'Middel', hoog: 'Hoog', kritiek: 'Kritiek' };
 const PRIO_RISK_CLASS = { laag: 'laag', middel: 'gemiddeld', hoog: 'hoog', kritiek: 'kritiek' };
+
+/** Zelfde thresholds als CyberRisicoService::prioriteitVanMatrix() (PHP), hier als CSS-risk-klasse. */
+function levelFrom(kans, impact) {
+    const s = kans * impact;
+    if (s >= 20) return 'kritiek';
+    if (s >= 12) return 'hoog';
+    if (s >= 6) return 'gemiddeld';
+    return 'laag';
+}
+
+function matrixHtml(item) {
+    const kans = item.kans, impact = item.impact;
+    const header = [1, 2, 3, 4, 5].map((k) => `<div style="font-size:10px;color:var(--color-text-tertiary);text-align:center">K${k}</div>`).join('');
+    let rows = '';
+    for (let i = 5; i >= 1; i--) {
+        let cells = '';
+        for (let k = 1; k <= 5; k++) {
+            const niv = levelFrom(k, i);
+            const active = kans === k && impact === i;
+            cells += `<div style="aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;background:var(--color-risk-${niv}-bg);color:var(--color-risk-${niv})${active ? ';box-shadow:inset 0 0 0 2px var(--color-text-primary)' : ''}">${active ? '●' : ''}</div>`;
+        }
+        rows += `<div style="font-size:10px;color:var(--color-text-tertiary);text-align:right;padding-right:4px;display:flex;align-items:center;justify-content:flex-end">I${i}</div>${cells}`;
+    }
+
+    return `
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--color-text-tertiary);margin-bottom:10px">Risicomatrix</div>
+        <div style="display:grid;grid-template-columns:20px repeat(5,1fr);gap:4px">
+            <div></div>${header}
+            ${rows}
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--color-text-tertiary)">Kans <span class="mono" style="color:var(--color-text-primary)">${kans}</span> &times; Impact <span class="mono" style="color:var(--color-text-primary)">${impact}</span> = score <span class="mono" style="color:var(--color-text-primary)">${kans * impact}</span></div>
+    `;
+}
 
 const root = document.getElementById('cyberrisicos-app');
 
@@ -60,7 +93,10 @@ function renderShell() {
             <div class="card" style="padding:0;overflow:hidden">
                 <div id="crListBody"></div>
             </div>
-            <div class="card" id="crDetail" style="padding:24px"></div>
+            <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card" id="crDetail" style="padding:24px"></div>
+                <div class="card" id="crMatrix" style="padding:24px"></div>
+            </div>
         </div>
     `;
 
@@ -113,7 +149,15 @@ function renderList(items) {
 
     body.innerHTML = `
         <div class="table-wrap"><table>
-            <thead><tr><th>#</th><th>Risico</th><th>Eigenaar</th><th>Prioriteit</th><th>Status</th></tr></thead>
+            <thead><tr>
+                <th style="width:70px">Nummer</th>
+                <th>Risico</th>
+                <th style="width:110px">Eigenaar</th>
+                <th style="width:50px;text-align:center">Kans</th>
+                <th style="width:55px;text-align:center">Impact</th>
+                <th style="width:110px">Niveau</th>
+                <th style="width:110px;text-align:right">Status</th>
+            </tr></thead>
             <tbody>${items.map((r) => `
                 <tr data-id="${r.id}" style="cursor:pointer${r.id === selectedId ? ';background:var(--color-background-secondary)' : ''}">
                     <td class="mono" style="font-size:11px;color:var(--color-text-tertiary)">#${r.id}</td>
@@ -122,8 +166,10 @@ function renderList(items) {
                         <div style="font-size:11px;color:var(--color-text-tertiary)">${esc(r.categorie)}</div>
                     </td>
                     <td style="font-size:12px">${esc(r.eigenaar_naam || '—')}</td>
+                    <td class="mono" style="text-align:center;font-size:12px">${r.kans}</td>
+                    <td class="mono" style="text-align:center;font-size:12px">${r.impact}</td>
                     <td>${prioBadge(r.prioriteit)}</td>
-                    <td>${statusBadge(r.status)}</td>
+                    <td style="text-align:right">${statusBadge(r.status)}</td>
                 </tr>
             `).join('')}</tbody>
         </table></div>
@@ -150,6 +196,7 @@ window.addEventListener('popstate', () => {
 async function loadDetail(id) {
     const detail = document.getElementById('crDetail');
     detail.innerHTML = '<div class="empty-state">Laden&hellip;</div>';
+    document.getElementById('crMatrix').innerHTML = '';
 
     try {
         const res = await api.get(`/api/v1/cyberrisicos/${id}`);
@@ -240,6 +287,8 @@ function renderDetail(item, logs) {
             </div>
         </div>
     `;
+
+    document.getElementById('crMatrix').innerHTML = matrixHtml(item);
 
     wireActionMenu(document.getElementById('crDetail'), 'cr-detail', [
         {

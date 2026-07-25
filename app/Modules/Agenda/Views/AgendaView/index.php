@@ -12,20 +12,6 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 ?>
 <div class="page-header">
   <div class="page-title">Agenda</div>
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <select id="agenda-persoon" class="form-select" style="width:auto">
-      <?php foreach ($gebruikers as $g): ?>
-        <option value="<?= $g['id'] ?>" <?= (int) $g['id'] === (int) $huidigeGebruikerId ? 'selected' : '' ?>><?= htmlspecialchars($g['naam']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400">
-      <input type="checkbox" id="agenda-alle-gebruikers"> Alle gebruikers
-    </label>
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400">
-      <input type="checkbox" id="agenda-alleen-in-behandeling"> Alleen tickets "in behandeling"
-    </label>
-    <button class="btn btn-primary" type="button" id="agenda-nieuw-btn">+ Nieuwe afspraak</button>
-  </div>
 </div>
 
 <?php if ($flashSuccess): ?>
@@ -35,8 +21,33 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
   <div class="alert alert-error"><?= htmlspecialchars($flashError) ?></div>
 <?php endif; ?>
 
+<div class="agenda-toolbar">
+  <div class="agenda-toolbar-nav">
+    <button class="agenda-icon-btn" type="button" id="agenda-prev"><i class="bi bi-chevron-left"></i></button>
+    <button class="agenda-today-btn" type="button" id="agenda-today">Vandaag</button>
+    <button class="agenda-icon-btn" type="button" id="agenda-next"><i class="bi bi-chevron-right"></i></button>
+  </div>
+  <div class="agenda-toolbar-title" id="agenda-title"></div>
+  <div class="agenda-view-switch" id="agenda-view-switch">
+    <button type="button" data-view="timeGridDay">Dag</button>
+    <button type="button" data-view="timeGridWeek" class="active">Week</button>
+    <button type="button" data-view="team">Team</button>
+  </div>
+  <div class="agenda-toolbar-filters">
+    <select id="agenda-persoon" class="form-select" style="width:auto">
+      <?php foreach ($gebruikers as $g): ?>
+        <option value="<?= $g['id'] ?>" <?= (int) $g['id'] === (int) $huidigeGebruikerId ? 'selected' : '' ?>><?= htmlspecialchars($g['naam']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label class="agenda-toolbar-check" id="agenda-alleen-in-behandeling-wrap" style="display:none">
+      <input type="checkbox" id="agenda-alleen-in-behandeling"> Alleen tickets "in behandeling"
+    </label>
+    <button class="btn btn-primary" type="button" id="agenda-nieuw-btn">+ Nieuwe afspraak</button>
+  </div>
+</div>
+
 <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start">
-  <div class="card" style="padding:16px">
+  <div class="card" style="padding:0;overflow:hidden">
     <div id="agenda-calendar"></div>
   </div>
 
@@ -145,10 +156,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var calendarEl = document.getElementById('agenda-calendar');
     var personSelect = document.getElementById('agenda-persoon');
-    var alleGebruikersCheckbox = document.getElementById('agenda-alle-gebruikers');
     var alleenInBehandelingCheckbox = document.getElementById('agenda-alleen-in-behandeling');
+    var alleenInBehandelingWrap = document.getElementById('agenda-alleen-in-behandeling-wrap');
     var modalEl = document.getElementById('agendaModal');
     var modal = new bootstrap.Modal(modalEl);
+
+    // "Team"-tab is geen echte FullCalendar-view (geen resource-timeline zonder betaalde
+    // Scheduler-licentie) — hergebruikt timeGridDay maar haalt events van iedereen op via de
+    // bestaande /agenda/team-events-endpoint i.p.v. alleen de geselecteerde persoon.
+    var teamMode = false;
+
+    function setTeamMode(actief) {
+        teamMode = actief;
+        personSelect.disabled = actief;
+        alleenInBehandelingWrap.style.display = actief ? 'flex' : 'none';
+    }
 
     function gekoppeldeOpties() {
         var type = document.getElementById('agenda-type').value;
@@ -217,12 +239,13 @@ document.addEventListener('DOMContentLoaded', function () {
         locale: 'nl',
         firstDay: 1,
         height: 'auto',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+        initialView: 'timeGridWeek',
+        headerToolbar: false,
         editable: true,
         selectable: true,
         events: function (info, success, failure) {
             var url;
-            if (alleGebruikersCheckbox.checked) {
+            if (teamMode) {
                 url = '/agenda/team-events?start=' + info.startStr + '&end=' + info.endStr
                     + '&alleen_in_behandeling=' + (alleenInBehandelingCheckbox.checked ? '1' : '0');
             } else {
@@ -240,6 +263,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 tekst += ' — status: ' + props.gekoppeld_status;
             }
             info.el.title = tekst;
+            if (props.type) {
+                info.el.classList.add('agenda-type-' + props.type);
+            }
+        },
+        datesSet: function (info) {
+            document.getElementById('agenda-title').textContent = info.view.title;
+            if (!teamMode) {
+                document.querySelectorAll('#agenda-view-switch button').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.dataset.view === info.view.type);
+                });
+            }
         },
         select: function (info) {
             openCreateModal(info.startStr, info.endStr);
@@ -256,12 +290,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     calendar.render();
 
-    personSelect.addEventListener('change', function () {
-        calendar.refetchEvents();
+    document.getElementById('agenda-prev').addEventListener('click', function () { calendar.prev(); });
+    document.getElementById('agenda-next').addEventListener('click', function () { calendar.next(); });
+    document.getElementById('agenda-today').addEventListener('click', function () { calendar.today(); });
+    document.querySelectorAll('#agenda-view-switch button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('#agenda-view-switch button').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+
+            if (btn.dataset.view === 'team') {
+                setTeamMode(true);
+                calendar.changeView('timeGridDay');
+            } else {
+                setTeamMode(false);
+                calendar.changeView(btn.dataset.view);
+            }
+        });
     });
 
-    alleGebruikersCheckbox.addEventListener('change', function () {
-        personSelect.disabled = alleGebruikersCheckbox.checked;
+    personSelect.addEventListener('change', function () {
         calendar.refetchEvents();
     });
 

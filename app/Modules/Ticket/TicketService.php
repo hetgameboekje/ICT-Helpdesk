@@ -124,16 +124,25 @@ class TicketService
         }
         $statusGewijzigd = $nieuweStatus !== '' && $nieuweStatus !== $ticket['status'];
 
-        if ($opmerking !== '' && !$opmerkingGeldig) {
+        if ($opmerking !== '' && !$opmerkingGeldig && !$statusGewijzigd) {
             throw new ValidationException(['titel' => ['Vul een titel in om deze opmerking op te slaan.']]);
         }
 
         if ($opmerkingGeldig || $statusGewijzigd) {
+            $logOpmerking = 'Status bijgewerkt.';
+            if ($opmerkingGeldig) {
+                $logOpmerking = $opmerking;
+            } elseif ($opmerking !== '') {
+                // Titelloze tekst die is ingetikt terwijl alleen de status werd gewijzigd:
+                // meesturen i.p.v. laten vallen.
+                $logOpmerking = "Status bijgewerkt.\n\n{$opmerking}";
+            }
+
             TicketLogModel::create([
                 'ticket_id' => $id,
                 'user_id' => $currentUser['id'],
                 'titel' => $opmerkingGeldig ? $titel : null,
-                'opmerking' => $opmerkingGeldig ? $opmerking : 'Status bijgewerkt.',
+                'opmerking' => $logOpmerking,
                 'status_van' => $statusGewijzigd ? $ticket['status'] : null,
                 'status_naar' => $statusGewijzigd ? $nieuweStatus : null,
             ]);

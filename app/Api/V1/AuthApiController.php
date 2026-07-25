@@ -65,4 +65,44 @@ class AuthApiController extends ApiController
             $this->success(null, status: 204);
         });
     }
+
+    /**
+     * Huidige gebruiker, werkt met zowel de sessiecookie als een bearer-token — zodat een
+     * niet-browserclient (mobiel/CLI) na het bewaren van alleen het token later het profiel kan
+     * verversen zonder opnieuw in te loggen of zelf $_SESSION te lezen.
+     */
+    public function me(): void
+    {
+        $this->handle(function () {
+            $currentUser = $this->requireAuth();
+            $this->success($currentUser);
+        });
+    }
+
+    /** Overzicht van de eigen actieve tokens (apparaten/sessies) — nodig voor een intrekscherm. */
+    public function tokens(): void
+    {
+        $this->handle(function () {
+            $currentUser = $this->requireAuth();
+            $tokens = PersonalAccessTokenModel::actieveVoorGebruiker((int) $currentUser['id']);
+            $this->success($tokens);
+        });
+    }
+
+    /** Trekt een eigen token in bij id (bv. "log dit apparaat uit" vanaf een ander apparaat/de browser-UI). */
+    public function revokeToken(int $id): void
+    {
+        $this->handle(function () use ($id) {
+            $currentUser = $this->requireAuth();
+            $this->requireCsrf();
+
+            $ingetrokken = PersonalAccessTokenModel::intrekkenVoorGebruiker($id, (int) $currentUser['id']);
+            if (!$ingetrokken) {
+                $this->error(404, 'Token niet gevonden.');
+                return;
+            }
+
+            $this->success(null, status: 204);
+        });
+    }
 }

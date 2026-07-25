@@ -3,6 +3,7 @@
 namespace App\Modules\Medewerker;
 
 use App\Core\Exceptions\NotFoundException;
+use App\Core\Exceptions\ValidationException;
 use App\Core\TableQuery;
 use App\Modules\Device\Models\DeviceModel;
 use App\Modules\Medewerker\Models\MedewerkerModel;
@@ -71,6 +72,31 @@ class MedewerkerService
         ];
     }
 
+    public function create(array $input): int
+    {
+        $data = $this->validate($input);
+        $data['user_id'] = $this->gekoppeldeUserId($data['email'], null);
+
+        return MedewerkerModel::create($data);
+    }
+
+    public function update(int $id, array $input): array
+    {
+        if (MedewerkerModel::find($id) === null) {
+            throw new NotFoundException("Medewerker {$id} niet gevonden.");
+        }
+
+        $data = $this->validate($input);
+        $data['user_id'] = $this->gekoppeldeUserId($data['email'], $id);
+        if ($data['manager_id'] === $id) {
+            $data['manager_id'] = null;
+        }
+
+        MedewerkerModel::update($id, $data);
+
+        return $this->find($id);
+    }
+
     public function delete(int $id): void
     {
         if (MedewerkerModel::find($id) === null) {
@@ -78,6 +104,52 @@ class MedewerkerService
         }
 
         MedewerkerModel::delete($id);
+    }
+
+    /** Zelfde koppellogica als MedewerkerController::gekoppeldeUserId(). */
+    private function gekoppeldeUserId(string $email, ?int $exceptMedewerkerId): ?int
+    {
+        if ($email === '' || MedewerkerModel::loginStatusVoorEmail($email, $exceptMedewerkerId) !== 'gevonden') {
+            return null;
+        }
+
+        return MedewerkerModel::userIdVoorEmail($email);
+    }
+
+    /** Zelfde velden als MedewerkerController::validatedData(), met verplichte-veldcheck toegevoegd
+     *  t.b.v. clients zonder formuliervalidatie (bv. een mobiele app). */
+    private function validate(array $input): array
+    {
+        $voornaam = trim((string) ($input['voornaam'] ?? ''));
+        $achternaam = trim((string) ($input['achternaam'] ?? ''));
+        $email = trim((string) ($input['email'] ?? ''));
+
+        $errors = [];
+        if ($voornaam === '') {
+            $errors['voornaam'][] = 'Voornaam is verplicht.';
+        }
+        if ($achternaam === '') {
+            $errors['achternaam'][] = 'Achternaam is verplicht.';
+        }
+        if ($email === '') {
+            $errors['email'][] = 'E-mailadres is verplicht.';
+        }
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
+        return [
+            'voornaam' => $voornaam,
+            'achternaam' => $achternaam,
+            'email' => $email,
+            'telefoon' => trim((string) ($input['telefoon'] ?? '')),
+            'functie' => trim((string) ($input['functie'] ?? '')),
+            'afdeling_id' => ($input['afdeling_id'] ?? '') !== '' ? (int) $input['afdeling_id'] : null,
+            'manager_id' => ($input['manager_id'] ?? '') !== '' ? (int) $input['manager_id'] : null,
+            'is_keyuser' => !empty($input['is_keyuser']) ? 1 : 0,
+            'startdatum' => ($input['startdatum'] ?? '') !== '' ? $input['startdatum'] : null,
+            'status' => in_array($input['status'] ?? '', ['actief', 'inactief'], true) ? $input['status'] : 'actief',
+        ];
     }
 
     private function tellenInBehandeling(int $userId): int

@@ -31,11 +31,19 @@
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Prioriteit</label>
-        <select name="prioriteit">
-          <?php foreach ($prioriteiten as $val => $label): ?>
-            <option value="<?= $val ?>" <?= $val === 'middel' ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
-          <?php endforeach; ?>
+        <label class="form-label">Kans (1 = onwaarschijnlijk, 5 = zeer waarschijnlijk)</label>
+        <select name="kans">
+          <?php for ($k = 1; $k <= 5; $k++): ?>
+            <option value="<?= $k ?>" <?= $k === 3 ? 'selected' : '' ?>><?= $k ?></option>
+          <?php endfor; ?>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Impact (1 = verwaarloosbaar, 5 = zeer ernstig)</label>
+        <select name="impact">
+          <?php for ($i = 1; $i <= 5; $i++): ?>
+            <option value="<?= $i ?>" <?= $i === 3 ? 'selected' : '' ?>><?= $i ?></option>
+          <?php endfor; ?>
         </select>
       </div>
       <div class="form-group">

@@ -5,12 +5,17 @@ namespace App\Shared\Dashboard;
 use App\Core\Controller;
 use App\Modules\Beheer\Models\LocatieModel;
 use App\Modules\CyberRisico\Models\CyberRisicoModel;
+use App\Modules\EmailVerwerking\Models\EmailAiAnalysisModel;
+use App\Modules\EmailVerwerking\Models\ImportedEmailModel;
 use App\Modules\EmailVerwerking\Models\KbArticleDraftModel;
+use App\Modules\Kennisbank\Models\KennisbankModel;
 use App\Modules\Medewerker\Models\MedewerkerModel;
+use App\Modules\Schijfgebruik\Models\SchijfgebruikSchijfModel;
 use App\Modules\Ticket\Models\TicketModel;
-use App\Modules\Tools\Models\PhonebookJobModel;
 use App\Modules\Uitgifte\Models\UitgifteModel;
 use App\Modules\Verbeterpunt\Models\VerbeterpuntModel;
+use App\Modules\Voorraad\Models\VoorraadItemModel;
+use App\Modules\Voorraad\Models\VoorraadTypeModel;
 use App\Modules\Urenstaat\Models\UrenstaatModel;
 use App\Shared\Afdeling\Models\AfdelingModel;
 use App\Shared\User\Models\UserModel;
@@ -54,6 +59,7 @@ class DashboardController extends Controller
             'kennisbank' => ['lezen' => $this->hasRecht('kennisbank')],
             'printers' => ['lezen' => $this->hasRecht('printers')],
             'email_verwerking' => ['lezen' => $this->hasRecht('email_verwerking')],
+            'schijfgebruik' => ['lezen' => $this->hasRecht('schijfgebruik')],
         ];
 
         $naam = (string) ($this->currentUser()['naam'] ?? '');
@@ -62,6 +68,9 @@ class DashboardController extends Controller
         $dagdeel = $uur < 12 ? 'Goedemorgen' : ($uur < 18 ? 'Goedemiddag' : 'Goedenavond');
 
         $draftTellingen = $mag['email_verwerking']['lezen'] ? KbArticleDraftModel::telPerStatus() : [];
+        $mailTellingen = $mag['email_verwerking']['lezen'] ? ImportedEmailModel::telPerStatus() : [];
+        $voorraadTellingen = $mag['voorraad']['lezen'] ? VoorraadItemModel::telPerStatus() : [];
+        $cyberPrioriteitTellingen = $mag['cyberrisicos']['lezen'] ? CyberRisicoModel::countByPrioriteit() : [];
 
         $this->render('Views/dashboard/index', [
             'activeModule' => 'dashboard',
@@ -80,7 +89,6 @@ class DashboardController extends Controller
             'cyberrisicosOpen' => $mag['cyberrisicos']['lezen'] ? CyberRisicoModel::countOpen() : 0,
             'cyberrisicosPerDag' => $mag['cyberrisicos']['lezen'] ? CyberRisicoModel::countLast30Days() : [],
             'cyberrisicosByDate' => $mag['cyberrisicos']['lezen'] ? CyberRisicoModel::listLast30DaysGrouped() : [],
-            'laatsteTelefoonlijst' => PhonebookJobModel::mostRecentDone(),
             'afdelingen' => AfdelingModel::all(),
             'gebruikers' => UserModel::all('naam ASC'),
             'cyberCategorieen' => self::CYBER_CATEGORIE_LABELS,
@@ -88,6 +96,46 @@ class DashboardController extends Controller
             'urenstaatLocaties' => $mag['urenstaat']['schrijven'] ? LocatieModel::visibleForUser((int) $this->currentUserId()) : [],
             'urenstaatOpen' => $mag['urenstaat']['schrijven'] ? UrenstaatModel::openForUser((int) $this->currentUserId()) : null,
             'mailmindInReview' => ($draftTellingen['draft_created'] ?? 0) + ($draftTellingen['in_review'] ?? 0),
+            'kennisbankStats' => $mag['kennisbank']['lezen'] ? [
+                'artikelen' => count(KennisbankModel::all()),
+                'aiConcepten' => ($draftTellingen['draft_created'] ?? 0) + ($draftTellingen['in_review'] ?? 0),
+                'categorieen' => count(KennisbankModel::distinctCategorieen()),
+                'verouderd' => KennisbankModel::countOutdated(6),
+            ] : null,
+            'mailmindStats' => $mag['email_verwerking']['lezen'] ? [
+                'ontvangen' => array_sum($mailTellingen),
+                'aiAnalyse' => count(EmailAiAnalysisModel::all()),
+                'conceptArtikel' => ($draftTellingen['draft_created'] ?? 0) + ($draftTellingen['in_review'] ?? 0),
+                'gepubliceerd' => $draftTellingen['published'] ?? 0,
+            ] : null,
+            'verbeterpuntStats' => $mag['verbeterpunten']['lezen'] ? (function () {
+                $perStatus = VerbeterpuntModel::telPerStatus();
+                return [
+                    'voorgesteld' => $perStatus['nieuw'] ?? 0,
+                    'inUitvoering' => $perStatus['goedgekeurd'] ?? 0,
+                    'afgerondDitKwartaal' => VerbeterpuntModel::countAfgerondDitKwartaal(),
+                    'doorlooptijd' => VerbeterpuntModel::gemiddeldeDoorlooptijdDagen(),
+                ];
+            })() : null,
+            'voorraadStats' => $mag['voorraad']['lezen'] ? [
+                'typen' => count(VoorraadTypeModel::all()),
+                'totaal' => VoorraadItemModel::countAll(),
+                'uitgegeven' => $voorraadTellingen['uitgegeven'] ?? 0,
+                'afgeschreven' => $voorraadTellingen['afgeschreven'] ?? 0,
+            ] : null,
+            'uitgifteStats' => $mag['uitgiften']['lezen'] ? [
+                'totaal' => UitgifteModel::countAll(),
+                'openstaand' => UitgifteModel::countOpen(),
+                'dezeWeek' => UitgifteModel::countDezeWeek(),
+                'geretourneerd' => UitgifteModel::countGeretourneerd(),
+            ] : null,
+            'cyberPrioriteitStats' => $mag['cyberrisicos']['lezen'] ? [
+                'laag' => $cyberPrioriteitTellingen['laag'] ?? 0,
+                'middel' => $cyberPrioriteitTellingen['middel'] ?? 0,
+                'hoog' => $cyberPrioriteitTellingen['hoog'] ?? 0,
+                'kritiek' => $cyberPrioriteitTellingen['kritiek'] ?? 0,
+            ] : null,
+            'schijfgebruikStats' => $mag['schijfgebruik']['lezen'] ? SchijfgebruikSchijfModel::dashboardStats() : null,
         ]);
     }
 

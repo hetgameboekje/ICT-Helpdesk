@@ -3,6 +3,7 @@
 namespace App\Modules\CyberRisico;
 
 use App\Core\CrudController;
+use App\Modules\CyberRisico\CyberRisicoService;
 use App\Modules\CyberRisico\Models\CyberRisicoModel;
 use App\Shared\Afdeling\Models\AfdelingModel;
 use App\Shared\User\Models\UserModel;
@@ -158,15 +159,18 @@ class CyberRisicoController extends CrudController
 
     protected function validatedData(array $post, bool $isUpdate = false): array
     {
+        $kans = min(5, max(1, (int) ($post['kans'] ?? 3) ?: 3));
+        $impact = min(5, max(1, (int) ($post['impact'] ?? 3) ?: 3));
+
         $data = [
             'titel' => trim($post['titel'] ?? ''),
             'omschrijving' => trim($post['omschrijving'] ?? ''),
             'categorie' => in_array($post['categorie'] ?? '', array_keys(self::CATEGORIE_LABELS), true)
                 ? $post['categorie']
                 : 'overig',
-            'prioriteit' => in_array($post['prioriteit'] ?? '', array_keys(self::PRIORITEIT_LABELS), true)
-                ? $post['prioriteit']
-                : 'middel',
+            'kans' => $kans,
+            'impact' => $impact,
+            'prioriteit' => CyberRisicoService::prioriteitVanMatrix($kans, $impact),
             'locatie' => trim($post['locatie'] ?? '') ?: null,
             'gemeld_door' => trim($post['gemeld_door'] ?? '') ?: null,
             'afdeling_id' => !empty($post['afdeling_id']) ? (int) $post['afdeling_id'] : null,

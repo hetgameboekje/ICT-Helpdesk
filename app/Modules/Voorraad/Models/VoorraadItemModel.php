@@ -34,6 +34,20 @@ class VoorraadItemModel extends Model
         return $row === false ? null : $row;
     }
 
+    public static function countAll(): int
+    {
+        return (int) Database::pdo()->query('SELECT COUNT(*) FROM voorraad_items WHERE deleted_at IS NULL')->fetchColumn();
+    }
+
+    /** @return array<string, int> status => aantal, voor de dashboard-KPI's. */
+    public static function telPerStatus(): array
+    {
+        $stmt = Database::pdo()->query(
+            'SELECT status, COUNT(*) AS aantal FROM voorraad_items WHERE deleted_at IS NULL GROUP BY status'
+        );
+        return array_column($stmt->fetchAll(), 'aantal', 'status');
+    }
+
     public static function countByType(): array
     {
         $sql = "

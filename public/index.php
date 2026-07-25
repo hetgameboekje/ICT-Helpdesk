@@ -12,6 +12,7 @@ use App\Api\V1\PrintersApiController;
 use App\Api\V1\ReflectiesApiController;
 use App\Api\V1\SchijfgebruikApiController;
 use App\Api\V1\ScriptsApiController;
+use App\Api\V1\SearchApiController;
 use App\Api\V1\TicketsApiController;
 use App\Api\V1\UitgiftenApiController;
 use App\Api\V1\VerbeterpuntenApiController;
@@ -173,6 +174,11 @@ $router->post('/tickets/{id}/tijd', [TicketTijdController::class, 'store']);
 // machine-to-machine endpoints met API-sleutel, zie App\Shared\ApiKey).
 $router->post('/api/v1/auth/login', [AuthApiController::class, 'login']);
 $router->post('/api/v1/auth/logout', [AuthApiController::class, 'logout']);
+$router->get('/api/v1/auth/me', [AuthApiController::class, 'me']);
+$router->get('/api/v1/auth/tokens', [AuthApiController::class, 'tokens']);
+$router->add('DELETE', '/api/v1/auth/tokens/{id}', [AuthApiController::class, 'revokeToken']);
+
+$router->get('/api/v1/search', [SearchApiController::class, 'index']);
 
 $router->get('/api/v1/tickets', [TicketsApiController::class, 'index']);
 $router->post('/api/v1/tickets', [TicketsApiController::class, 'store']);
@@ -222,7 +228,9 @@ $router->add('DELETE', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::
 $router->post('/api/v1/cyberrisicos/{id}/log', [CyberRisicosApiController::class, 'addLog']);
 
 $router->get('/api/v1/voorraad', [VoorraadApiController::class, 'index']);
+$router->post('/api/v1/voorraad', [VoorraadApiController::class, 'store']);
 $router->get('/api/v1/voorraad/{id}', [VoorraadApiController::class, 'show']);
+$router->add('PUT', '/api/v1/voorraad/{id}', [VoorraadApiController::class, 'update']);
 
 $router->get('/api/v1/uitgiften', [UitgiftenApiController::class, 'index']);
 $router->post('/api/v1/uitgiften', [UitgiftenApiController::class, 'store']);
@@ -235,20 +243,15 @@ $router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenAp
 $router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
 
 $router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
+$router->post('/api/v1/medewerkers', [MedewerkersApiController::class, 'store']);
 $router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
-$router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
-
-$router->get('/api/v1/hardware-uitgaven', [HardwareUitgavenApiController::class, 'index']);
-$router->get('/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'show']);
-$router->add('PUT', '/api/v1/hardware-uitgaven/{id}/status', [HardwareUitgavenApiController::class, 'updateStatus']);
-$router->add('DELETE', '/api/v1/hardware-uitgaven/{id}', [HardwareUitgavenApiController::class, 'destroy']);
-
-$router->get('/api/v1/medewerkers', [MedewerkersApiController::class, 'index']);
-$router->get('/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'show']);
+$router->add('PUT', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/medewerkers/{id}', [MedewerkersApiController::class, 'destroy']);
 
 $router->get('/api/v1/scripts', [ScriptsApiController::class, 'index']);
+$router->post('/api/v1/scripts', [ScriptsApiController::class, 'store']);
 $router->get('/api/v1/scripts/{id}', [ScriptsApiController::class, 'show']);
+$router->add('PUT', '/api/v1/scripts/{id}', [ScriptsApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/scripts/{id}', [ScriptsApiController::class, 'destroy']);
 
 $router->get('/api/v1/schijfgebruik', [SchijfgebruikApiController::class, 'index']);
