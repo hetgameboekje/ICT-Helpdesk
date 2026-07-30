@@ -30,6 +30,10 @@
         <input type="text" name="serienummer" value="<?= htmlspecialchars($item['serienummer'] ?? '') ?>" placeholder="optioneel — laat leeg bij kabels e.d.">
       </div>
       <div class="form-group">
+        <label class="form-label">Product-ID</label>
+        <input type="text" name="product_id" value="<?= htmlspecialchars($item['product_id'] ?? '') ?>" placeholder="optioneel">
+      </div>
+      <div class="form-group">
         <label class="form-label">Locatie</label>
         <input type="text" name="locatie" value="<?= htmlspecialchars($item['locatie'] ?? '') ?>" placeholder="bv. Serverroom schap 3">
       </div>

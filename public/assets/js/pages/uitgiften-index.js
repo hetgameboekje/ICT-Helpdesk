@@ -74,6 +74,19 @@ function debounce(fn, ms) {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+/**
+ * Herkenning van fabrieks-apparaatscans (serienummer,product-ID[,omschrijving], zie
+ * App\Shared\AssetScan\BarcodeScanParser — zelfde regel hier client-side herhaald als lichte
+ * vooraankondiging vóór de serverside call, niet als vervanging ervan) in het barcode-veld van het
+ * inline uitgifteformulier. Bij herkenning wordt POST /api/v1/asset-scan aangeroepen voor een
+ * suggestieblok (apparaattype, bekend-apparaat-info, medewerker-/last-logged-on-user-suggestie);
+ * de gebruiker bevestigt/wijzigt het voorgestelde type vóór het indienen (nooit blind aangenomen).
+ */
+function lijktOpApparaatScan(raw) {
+    const delen = raw.split(',').map((d) => d.trim());
+    return delen.length >= 2 && delen[0].length >= 4 && delen[1].length >= 4;
+}
+
 function toggleCreatePanel() {
     const panel = document.getElementById('uiCreatePanel');
     if (panel.style.display !== 'none') {
@@ -86,7 +99,7 @@ function toggleCreatePanel() {
         <form id="uiCreateForm" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
                 <label class="form-label" style="font-size:11px">Barcode</label>
-                <input type="text" name="barcode" list="uiBarcodeOptions" autocomplete="off" required>
+                <input type="text" name="barcode" list="uiBarcodeOptions" autocomplete="off" required autofocus>
                 <datalist id="uiBarcodeOptions"></datalist>
             </div>
             <div>
@@ -94,6 +107,7 @@ function toggleCreatePanel() {
                 <input type="text" name="medewerker_naam" list="uiNaamOptions" autocomplete="off" required>
                 <datalist id="uiNaamOptions"></datalist>
             </div>
+            <div id="uiScanSuggestion" style="display:none;grid-column:span 2"></div>
             <div style="grid-column:span 2">
                 <label class="form-label" style="font-size:11px">Opmerking</label>
                 <input type="text" name="opmerking">
@@ -104,10 +118,78 @@ function toggleCreatePanel() {
         </form>
     `;
 
+    function hideSuggestion() {
+        const box = document.getElementById('uiScanSuggestion');
+        box.style.display = 'none';
+        box.innerHTML = '';
+    }
+
+    async function toonScanSuggestie(raw) {
+        const box = document.getElementById('uiScanSuggestion');
+        box.style.display = 'block';
+        box.innerHTML = '<div style="font-size:12px;color:var(--color-text-tertiary);padding:6px 0">Apparaat herkennen&hellip;</div>';
+
+        try {
+            const res = await api.post('/api/v1/asset-scan', { raw, context: 'uitgifte' });
+            renderScanSuggestie(res.data);
+        } catch (err) {
+            hideSuggestion();
+        }
+    }
+
+    function renderScanSuggestie(s) {
+        const box = document.getElementById('uiScanSuggestion');
+        const stijl = 'border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:10px 12px;background:var(--color-background-secondary)';
+        const delen = [];
+
+        delen.push(`<div style="font-size:12.5px;font-weight:600"><i class="bi bi-cpu"></i> Waarschijnlijk laptop of werkstation gedetecteerd</div>`);
+        delen.push(`<div style="font-size:11.5px;color:var(--color-text-tertiary);margin-top:2px">Serienummer en product-ID gevonden vanuit barcode: <span class="mono">${esc(s.serial_number)}</span> / <span class="mono">${esc(s.product_id)}</span>${s.description ? ' &mdash; ' + esc(s.description) : ''}</div>`);
+
+        if (s.warning) {
+            delen.push(`<div style="margin-top:6px;font-size:12px;color:var(--color-text-danger)"><i class="bi bi-exclamation-triangle"></i> ${esc(s.warning)}</div>`);
+        }
+
+        if (s.match) {
+            delen.push(`
+                <div style="margin-top:8px;font-size:12px;border-top:0.5px solid var(--color-border-tertiary);padding-top:8px">
+                    <div style="color:var(--color-text-tertiary);font-size:11px;text-transform:uppercase">Bekend apparaat &mdash; ${esc(s.match.bron)}</div>
+                    <div>${esc(s.match.asset_naam || s.match.model || 'Onbekend model')}${s.match.fabrikant ? ' (' + esc(s.match.fabrikant) + ')' : ''}</div>
+                    ${s.match.locatie ? `<div style="color:var(--color-text-tertiary)">Locatie: ${esc(s.match.locatie)}</div>` : ''}
+                </div>
+            `);
+        } else {
+            delen.push(`
+                <div style="margin-top:8px;font-size:12px;border-top:0.5px solid var(--color-border-tertiary);padding-top:8px" id="uiAssetTypeVeld">
+                    <label class="form-label" style="font-size:11px">Voorgesteld apparaattype (pas aan indien nodig)</label>
+                    <input type="text" name="bevestigd_asset_type" value="${esc(s.suggested_asset_type || 'Laptop')}">
+                    <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">Nieuw apparaat &mdash; wordt aangemaakt onder dit type zodra je op &quot;Uitgeven&quot; klikt.</div>
+                </div>
+            `);
+        }
+
+        if (s.suggested_employee) {
+            delen.push(`<div style="margin-top:8px;font-size:12px"><i class="bi bi-person"></i> Waarschijnlijk laatste gebruiker: <strong>${esc(s.suggested_employee.naam)}</strong><div style="color:var(--color-text-tertiary);font-size:11px">Bron: ${esc(s.suggested_employee.bron)}</div></div>`);
+        }
+        if (s.last_logged_on_user) {
+            delen.push(`<div style="margin-top:4px;font-size:11px;color:var(--color-text-tertiary)">Laatst ingelogde gebruiker (NinjaOne): ${esc(s.last_logged_on_user)}</div>`);
+        }
+
+        box.innerHTML = `<div style="${stijl}">${delen.join('')}</div>`;
+    }
+
     const barcodeInput = panel.querySelector('[name="barcode"]');
     barcodeInput.addEventListener('input', debounce(async () => {
-        if (barcodeInput.value.trim().length < 2) return;
-        const items = await api.get(`/uitgiften/items?q=${encodeURIComponent(barcodeInput.value.trim())}`).catch(() => []);
+        const raw = barcodeInput.value.trim();
+        if (raw.length < 2) { hideSuggestion(); return; }
+
+        if (lijktOpApparaatScan(raw)) {
+            document.getElementById('uiBarcodeOptions').innerHTML = '';
+            await toonScanSuggestie(raw);
+            return;
+        }
+
+        hideSuggestion();
+        const items = await api.get(`/uitgiften/items?q=${encodeURIComponent(raw)}`).catch(() => []);
         document.getElementById('uiBarcodeOptions').innerHTML = (Array.isArray(items) ? items : []).map((i) => `<option value="${esc(i.barcode)}">${esc(i.label)}</option>`).join('');
     }, 250));
 
@@ -122,11 +204,16 @@ function toggleCreatePanel() {
         e.preventDefault();
         const form = e.target;
         try {
-            const res = await api.post('/api/v1/uitgiften', {
+            const payload = {
                 barcode: form.barcode.value.trim(),
                 medewerker_naam: form.medewerker_naam.value.trim(),
                 opmerking: form.opmerking.value.trim(),
-            });
+            };
+            if (form.bevestigd_asset_type) {
+                payload.bevestigd_asset_type = form.bevestigd_asset_type.value.trim();
+            }
+
+            const res = await api.post('/api/v1/uitgiften', payload);
             panel.style.display = 'none';
             selectItem(res.data.item.id);
             load();

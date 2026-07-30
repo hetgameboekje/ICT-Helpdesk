@@ -3,13 +3,14 @@
 namespace App\Modules\Voorraad\Models;
 
 use App\Core\Database;
+use App\Core\Exceptions\ValidationException;
 use App\Core\Model;
 
 class VoorraadItemModel extends Model
 {
     protected static string $table = 'voorraad_items';
     protected static array $fillable = [
-        'type_id', 'device_id', 'variant', 'serienummer', 'barcode', 'status', 'locatie', 'opmerking', 'specificaties', 'aangemaakt_door_id',
+        'type_id', 'device_id', 'variant', 'serienummer', 'product_id', 'barcode', 'status', 'locatie', 'opmerking', 'specificaties', 'aangemaakt_door_id',
     ];
     protected static bool $softDeletes = true;
 
@@ -95,6 +96,79 @@ class VoorraadItemModel extends Model
         $stmt = Database::pdo()->prepare($sql . ' LIMIT 1');
         $stmt->execute($params);
         return $stmt->fetchColumn() !== false;
+    }
+
+    public static function findBySerienummer(string $serienummer): ?array
+    {
+        $stmt = Database::pdo()->prepare(self::SELECT . ' AND vi.serienummer = ? LIMIT 1');
+        $stmt->execute([$serienummer]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    public static function findAvailableBySerienummer(string $serienummer): ?array
+    {
+        $stmt = Database::pdo()->prepare(self::SELECT . " AND vi.serienummer = ? AND vi.status = 'op_voorraad' LIMIT 1");
+        $stmt->execute([$serienummer]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Wrapper om create() die een dubbel serienummer (unique-constraint-schending) omzet naar een
+     * nette ValidationException i.p.v. een onafgevangen PDOException — de eigenlijke bescherming
+     * tegen een race condition (twee gelijktijdige scans van hetzelfde fysieke apparaat) zit in de
+     * database-unique-constraint zelf (serienummerExists() vooraf is alleen een snelle UX-check,
+     * geen garantie onder concurrency); dit vangt dat scenario alsnog netjes af.
+     */
+    public static function createUniek(array $data): int
+    {
+        try {
+            return self::create($data);
+        } catch (\PDOException $e) {
+            if ($e->getCode() === '23000') {
+                throw new ValidationException([
+                    'serienummer' => ['Dit serienummer is zojuist al door een andere registratie in gebruik genomen.'],
+                ]);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Maakt een nieuw voorraad-item aan voor een via barcode-scan herkend "device candidate"
+     * (serienummer + product-ID, zie App\Shared\AssetScan) waarvan de gebruiker het voorgestelde
+     * apparaattype heeft bevestigd of gewijzigd — gebruikt door UitgifteService::create() i.p.v. de
+     * generieke createOnbekend() zodra de scan een serienummer + product-ID opleverde. Valt terug op
+     * het vaste type 'Overig' als de bevestigde typenaam niet in de catalogus bestaat (het is vrije
+     * tekst vanuit de UI, geen select-uit-catalogus).
+     */
+    public static function createVoorApparaatKandidaat(
+        string $serienummer,
+        ?string $productId,
+        ?string $beschrijving,
+        string $bevestigdAssetType,
+        ?int $aangemaaktDoorId
+    ): int {
+        $type = VoorraadTypeModel::findByNaam($bevestigdAssetType);
+        $typeId = $type['id'] ?? VoorraadTypeModel::findOrCreateOverig();
+        $typeCode = $type['code'] ?? 'OVERIG';
+
+        $opmerkingDelen = ['Automatisch aangemaakt vanuit een herkende apparaat-scan (serienummer + product-ID).'];
+        if ($beschrijving !== null && $beschrijving !== '') {
+            $opmerkingDelen[] = "Omschrijving uit scan: \"{$beschrijving}\".";
+        }
+
+        return self::createUniek([
+            'type_id' => (int) $typeId,
+            'variant' => $beschrijving !== null ? substr($beschrijving, 0, 50) : null,
+            'serienummer' => $serienummer,
+            'product_id' => $productId,
+            'barcode' => strtoupper($typeCode . '-' . preg_replace('/[^A-Za-z0-9]/', '', $serienummer)),
+            'status' => 'uitgegeven',
+            'opmerking' => implode(' ', $opmerkingDelen),
+            'aangemaakt_door_id' => $aangemaaktDoorId,
+        ]);
     }
 
     public static function setStatus(int $id, string $status): void

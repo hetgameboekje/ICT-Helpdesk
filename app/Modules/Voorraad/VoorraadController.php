@@ -79,6 +79,7 @@ class VoorraadController extends CrudController
         }
 
         $serienummers = array_values($serienummers);
+        $productId = trim($_POST['product_id'] ?? '') ?: null;
 
         $specificaties = null;
         if (!empty($_FILES['dxdiag_bestand']['tmp_name']) && $_FILES['dxdiag_bestand']['error'] === UPLOAD_ERR_OK) {
@@ -97,20 +98,26 @@ class VoorraadController extends CrudController
 
         $lastId = null;
         $barcode = null;
-        for ($i = 0; $i < $aantal; $i++) {
-            $serienummer = $serienummers[$i] ?? null;
-            $barcode = self::buildBarcode($type['code'], $variant, $serienummer);
+        try {
+            for ($i = 0; $i < $aantal; $i++) {
+                $serienummer = $serienummers[$i] ?? null;
+                $barcode = self::buildBarcode($type['code'], $variant, $serienummer);
 
-            $lastId = VoorraadItemModel::create([
-                'type_id' => $typeId,
-                'variant' => $variant,
-                'serienummer' => $serienummer,
-                'barcode' => $barcode,
-                'locatie' => $locatie,
-                'opmerking' => $opmerking,
-                'specificaties' => $specificaties,
-                'aangemaakt_door_id' => $this->currentUserId(),
-            ]);
+                $lastId = VoorraadItemModel::createUniek([
+                    'type_id' => $typeId,
+                    'variant' => $variant,
+                    'serienummer' => $serienummer,
+                    'product_id' => $aantal === 1 ? $productId : null,
+                    'barcode' => $barcode,
+                    'locatie' => $locatie,
+                    'opmerking' => $opmerking,
+                    'specificaties' => $specificaties,
+                    'aangemaakt_door_id' => $this->currentUserId(),
+                ]);
+            }
+        } catch (\App\Core\Exceptions\ValidationException $e) {
+            $_SESSION['flash_error'] = implode(' ', array_merge(...array_values($e->errors())));
+            $this->redirect('/voorraad/create');
         }
 
         $_SESSION['flash_success'] = $aantal > 1
@@ -140,6 +147,7 @@ class VoorraadController extends CrudController
 
         $variant = trim($_POST['variant'] ?? '') ?: null;
         $serienummer = trim($_POST['serienummer'] ?? '') ?: null;
+        $productId = trim($_POST['product_id'] ?? '') ?: null;
         $locatie = trim($_POST['locatie'] ?? '') ?: null;
         $opmerking = trim($_POST['opmerking'] ?? '') ?: null;
 
@@ -154,6 +162,7 @@ class VoorraadController extends CrudController
             'type_id' => $typeId,
             'variant' => $variant,
             'serienummer' => $serienummer,
+            'product_id' => $productId,
             'barcode' => $barcode,
             'locatie' => $locatie,
             'opmerking' => $opmerking,

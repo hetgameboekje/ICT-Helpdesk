@@ -582,6 +582,77 @@ sessie beschikbaar in deze omgeving) — de dropdown/sheet-interactie zelf (open
 outside) is dus alleen statisch gecontroleerd (JS-haakjes-balans, geen `node`/linter beschikbaar om
 te transpilen), niet in een echte browser geklikt.
 
+## Apparaatscan-herkenning (App\Shared\AssetScan, 2026-07-30)
+
+Herkenning van fabrieks-assetlabels bij het scannen in Uitgifte/Voorraad — een 3D-barcode zoals
+`1H86265279,E08ZGET#ABH` (serienummer,product-ID) of de variant met een omschrijving erachter
+(`5CD340274M,6B8B3EA#ABH,HP Zbook Power 15.6 inch G9`) wordt herkend als "device candidate",
+gezocht in de bestaande data en getoond als niet-bindende suggestie — nooit blind een apparaattype
+of medewerker vastzetten zonder bevestiging.
+
+**Geen live NinjaOne-API-integratie** (bewust, zie eerdere afweging in dit bestand): dit systeem
+heeft geen NinjaOne-credentials/-client. "NinjaOne" als databron betekent hier: de al bestaande
+`schijfgebruik_devices`-tabel, gevuld via de NinjaRMM "Devices"-CSV-export
+(`SchijfgebruikImport`, zie de Schijfgebruik-module) — dat is de enige plek in dit systeem waar
+merk/model/laatste-login/gekoppelde-medewerker per serienummer al bekend zijn. `devices` en de
+software-importtabellen hebben geen serienummer-kolom en zijn dus geen zoekbron.
+
+**Architectuur** (drie losse services, App\Shared omdat zowel Uitgifte als Voorraad dit gebruiken):
+- `App\Shared\AssetScan\BarcodeScanParser` — puur parsen (komma-split, trim, minimale lengte),
+  geen database-toegang. Herkent 2 delen (serienummer,product-ID) én de variant met extra delen
+  erachter (alles vanaf het 3e deel wordt als `description`/`extra_parts` meegegeven, ook als een
+  toekomstige variant nog meer delen toevoegt).
+- `App\Shared\AssetScan\AssetMatchService` — zoekt op serienummer in `voorraad_items` (hoog-
+  confidence, actieve catalogus) en `schijfgebruik_devices` (gemiddeld-confidence, NinjaOne/RMM-
+  import); een voorraad_items-match wint altijd.
+- `App\Shared\AssetScan\AssetEnrichmentService` — orchestreert parser + matcher tot één
+  suggestieblok (apparaattype, matchbron/-confidence, fabrikant/model/locatie, medewerker-suggestie
+  met bron, `last_logged_on_user` uit het ruwe NinjaOne-veld) en logt elke scan naar
+  `device_scans` (audittrail — ruwe scanwaarde, alle extra CSV-delen als JSON, en de gegeven
+  suggestie, voor debugging/nazorg; geen enkel veld hier is ooit bindend).
+- `App\Api\V1\AssetScanApiController` — `POST /api/v1/asset-scan` (body `{raw, context}`,
+  context `uitgifte`/`voorraad`), gebruikt door zowel `uitgiften-index.js` (inline
+  "Nieuwe uitgifte"-formulier) als `Voorraad/Views/VoorraadView/create.php` (los scanveld boven het
+  bestaande server-rendered formulier, dat formulier zelf blijft ongewijzigd server-rendered).
+
+**Business rules, geïmplementeerd in `UitgifteService::create()`/`UitgifteController::store()`**
+(beide entry points — het API-pad is de echte/actieve flow, de server-rendered `/uitgiften/create`
+bleef om dezelfde reden bijgewerkt als bij eerdere passes: geen divergerend gedrag tussen beide):
+altijd eerst op serienummer zoeken vóór een nieuw item aan te nemen; bestaat het al en staat het als
+`uitgegeven` geregistreerd, dan weigert de aanvraag (422) met een duidelijke melding i.p.v. een
+tweede, foutieve uitgifte-registratie te maken; bestaat het nog niet, dan wordt het aangemaakt onder
+het door de gebruiker bevestigde apparaattype (`bevestigd_asset_type`, standaard 'Laptop' — de UI
+laat dit altijd aanpassen vóór het indienen).
+
+**Datamodel**: nieuwe tabel `device_scans` (audittrail, zie boven) en een nieuwe kolom
+`voorraad_items.product_id` (nullable) — de enige twee schemawijzigingen. Geen nieuwe kolommen op
+`devices`/`schijfgebruik_devices` nodig, die bestonden al.
+
+**Race-condition-bescherming**: `VoorraadItemModel::createUniek()` vangt een unique-constraint-
+schending op `serienummer` af (SQLSTATE 23000) en zet die om naar een nette `ValidationException`
+i.p.v. een onafgevangen `PDOException` — de vooraf-check (`serienummerExists()`) blijft alleen een
+snelle UX-check, de database-constraint is de echte garantie tegen twee gelijktijdige scans van
+hetzelfde fysieke apparaat. Gebruikt door `VoorraadService::create()`, `VoorraadController::store()`
+én `createVoorApparaatKandidaat()`.
+
+Lokaal end-to-end geverifieerd tegen een echte lokale database (XAMPP MySQL, verse `vhe`-database,
+`database/clear.php --force` + `database/seed.php`): `php -l` schoon op alle nieuwe/gewijzigde
+bestanden; `POST /api/v1/asset-scan` getest met beide scanvarianten (2 en 3 delen) én een gewone
+eigen barcode (geen komma, `device_candidate=false`); audittrail geverifieerd in `device_scans`;
+een geseede `schijfgebruik_devices`-rij met gekoppelde medewerker gaf de verwachte NinjaOne-match
+(`match_confidence=gemiddeld`, medewerker-suggestie + `last_logged_on_user`) terug; volledige
+`POST /api/v1/uitgiften`-flow met een onbekende scan maakte automatisch een `voorraad_items`-rij
+onder type 'Laptop' aan met het juiste serienummer/product-ID; een tweede uitgifte-poging op
+hetzelfde serienummer gaf de verwachte 422-weigering; `POST /api/v1/voorraad` met `product_id`
+werkte; alle HTML-pagina's (`/uitgiften`, `/uitgiften/create`, `/voorraad`, `/voorraad/create`,
+`/voorraad/{id}/edit`) renderden 200 zonder PHP-fouten met een ingelogde sessie, inclusief de nieuwe
+`scanInput`/`productIdInput`-velden in de markup.
+
+**Nog niet gedaan:** geen UI-wijziging voor bulkregistratie (aantal > 1) — `product_id` wordt daar
+bewust genegeerd (één product-ID hoort bij één fysiek item); geen visuele browser-klik-doortest van
+de suggestie-UI zelf (geen headed browser beschikbaar in deze omgeving) — wel bevestigd dat de
+juiste DOM-elementen renderen en de API-aanroepen de juiste data teruggeven.
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

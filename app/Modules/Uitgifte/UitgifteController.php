@@ -3,9 +3,11 @@
 namespace App\Modules\Uitgifte;
 
 use App\Core\CrudController;
+use App\Core\Exceptions\ValidationException;
 use App\Modules\Medewerker\Models\MedewerkerModel;
 use App\Modules\Uitgifte\Models\UitgifteModel;
 use App\Modules\Voorraad\Models\VoorraadItemModel;
+use App\Shared\AssetScan\BarcodeScanParser;
 
 class UitgifteController extends CrudController
 {
@@ -51,15 +53,48 @@ class UitgifteController extends CrudController
             $this->redirect('/uitgiften/create?barcode=' . urlencode($barcode));
         }
 
-        $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+        // Zelfde device-candidate-herkenning als UitgifteService::create() (API-pad) — zie die
+        // methode voor de volledige uitleg. Dit server-rendered formulier is geen link meer vanuit
+        // de uitgiften-lijst (die gebruikt het API-pad), maar blijft bereikbaar via een directe URL.
+        $scan = BarcodeScanParser::parse($barcode);
         $onbekend = false;
 
-        if ($item === null) {
-            // Geen bestaand voorraaditem met deze barcode/naam: automatisch als voorraad aanmaken
-            // onder het vaste type 'Overig' i.p.v. de uitgifte te weigeren.
-            $itemId = VoorraadItemModel::createOnbekend($barcode, $this->currentUserId());
-            $item = VoorraadItemModel::findWithRelations($itemId);
-            $onbekend = true;
+        try {
+            if ($scan['device_candidate']) {
+                $item = VoorraadItemModel::findBySerienummer($scan['serial_number']);
+
+                if ($item !== null && $item['status'] === 'uitgegeven') {
+                    throw new ValidationException(['barcode' => [
+                        "Dit apparaat (serienummer {$scan['serial_number']}) staat al als uitgegeven geregistreerd. Neem eerst retour via de bestaande uitgifte.",
+                    ]]);
+                }
+
+                if ($item === null) {
+                    $bevestigdAssetType = trim($_POST['bevestigd_asset_type'] ?? '') ?: (string) $scan['suggested_asset_type'];
+                    $itemId = VoorraadItemModel::createVoorApparaatKandidaat(
+                        $scan['serial_number'],
+                        $scan['product_id'],
+                        $scan['description'],
+                        $bevestigdAssetType,
+                        $this->currentUserId()
+                    );
+                    $item = VoorraadItemModel::findWithRelations($itemId);
+                    $onbekend = true;
+                }
+            } else {
+                $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+
+                if ($item === null) {
+                    // Geen bestaand voorraaditem met deze barcode/naam: automatisch als voorraad aanmaken
+                    // onder het vaste type 'Overig' i.p.v. de uitgifte te weigeren.
+                    $itemId = VoorraadItemModel::createOnbekend($barcode, $this->currentUserId());
+                    $item = VoorraadItemModel::findWithRelations($itemId);
+                    $onbekend = true;
+                }
+            }
+        } catch (ValidationException $e) {
+            $_SESSION['flash_error'] = implode(' ', array_merge(...array_values($e->errors())));
+            $this->redirect('/uitgiften/create?barcode=' . urlencode($barcode));
         }
 
         $id = UitgifteModel::create([

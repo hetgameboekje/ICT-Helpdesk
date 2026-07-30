@@ -2,6 +2,7 @@
 
 require __DIR__ . '/../app/bootstrap.php';
 
+use App\Api\V1\AssetScanApiController;
 use App\Api\V1\AuthApiController;
 use App\Api\V1\CyberRisicosApiController;
 use App\Api\V1\DevicesApiController;
@@ -226,6 +227,8 @@ $router->get('/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'sh
 $router->add('PUT', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'update']);
 $router->add('DELETE', '/api/v1/cyberrisicos/{id}', [CyberRisicosApiController::class, 'destroy']);
 $router->post('/api/v1/cyberrisicos/{id}/log', [CyberRisicosApiController::class, 'addLog']);
+
+$router->post('/api/v1/asset-scan', [AssetScanApiController::class, 'analyseer']);
 
 $router->get('/api/v1/voorraad', [VoorraadApiController::class, 'index']);
 $router->post('/api/v1/voorraad', [VoorraadApiController::class, 'store']);

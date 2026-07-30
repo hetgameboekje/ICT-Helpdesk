@@ -28,4 +28,12 @@ class VoorraadTypeModel extends Model
 
         return self::create(['naam' => 'Overig', 'code' => 'OVERIG']);
     }
+
+    public static function findByNaam(string $naam): ?array
+    {
+        $stmt = Database::pdo()->prepare('SELECT * FROM voorraad_types WHERE LOWER(naam) = LOWER(?) LIMIT 1');
+        $stmt->execute([$naam]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
 }

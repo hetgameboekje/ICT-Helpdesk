@@ -7,6 +7,7 @@ use App\Core\Exceptions\ValidationException;
 use App\Core\TableQuery;
 use App\Modules\Uitgifte\Models\UitgifteModel;
 use App\Modules\Voorraad\Models\VoorraadItemModel;
+use App\Shared\AssetScan\BarcodeScanParser;
 
 /**
  * Service/Business-laag voor uitgiften: elke uitgifte is een dunne, transactionele koppeling naar
@@ -51,7 +52,21 @@ class UitgifteService
         return ['item' => $item];
     }
 
-    /** Zelfde flow als UitgifteController::store(): barcode niet gevonden → automatisch als 'Overig' aanmaken i.p.v. weigeren. */
+    /**
+     * Zelfde flow als UitgifteController::store(), uitgebreid met herkenning van een fabrieks-
+     * apparaatscan (serienummer + product-ID, komma-gescheiden — zie App\Shared\AssetScan): het
+     * "barcode"-veld blijft één invoerveld (scan, typ, of zoek op naam, zie create.php/
+     * uitgiften-index.js), maar wordt hier eerst door BarcodeScanParser gehaald om te bepalen of het
+     * onze eigen barcode is (bestaand gedrag, ongewijzigd) of een device-candidate-scan.
+     *
+     * Bij een device-candidate-scan: eerst op serienummer zoeken (nooit blind aannemen dat het
+     * apparaat nieuw is, zie business rules) — bestaat het al en staat het als 'uitgegeven'
+     * geregistreerd, dan wordt de aanvraag geweigerd (voorkomt een stil dubbele-uitgifte-record i.p.v.
+     * de bestaande te hergebruiken); bestaat het nog niet, dan wordt het aangemaakt onder het door de
+     * gebruiker bevestigde apparaattype (`bevestigd_asset_type`, standaard 'Laptop' — nooit blind
+     * vastgezet zonder gebruikersbevestiging, zie AssetEnrichmentService/de suggestie-UI die hieraan
+     * voorafgaat via POST /api/v1/asset-scan).
+     */
     public function create(array $input, array $currentUser): int
     {
         $barcode = trim((string) ($input['barcode'] ?? ''));
@@ -68,13 +83,38 @@ class UitgifteService
             throw new ValidationException($errors);
         }
 
-        $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+        $scan = BarcodeScanParser::parse($barcode);
         $onbekend = false;
 
-        if ($item === null) {
-            $itemId = VoorraadItemModel::createOnbekend($barcode, $currentUser['id']);
-            $item = VoorraadItemModel::findWithRelations($itemId);
-            $onbekend = true;
+        if ($scan['device_candidate']) {
+            $item = VoorraadItemModel::findBySerienummer($scan['serial_number']);
+
+            if ($item !== null && $item['status'] === 'uitgegeven') {
+                throw new ValidationException(['barcode' => [
+                    "Dit apparaat (serienummer {$scan['serial_number']}) staat al als uitgegeven geregistreerd. Neem eerst retour via de bestaande uitgifte.",
+                ]]);
+            }
+
+            if ($item === null) {
+                $bevestigdAssetType = trim((string) ($input['bevestigd_asset_type'] ?? '')) ?: (string) $scan['suggested_asset_type'];
+                $itemId = VoorraadItemModel::createVoorApparaatKandidaat(
+                    $scan['serial_number'],
+                    $scan['product_id'],
+                    $scan['description'],
+                    $bevestigdAssetType,
+                    $currentUser['id']
+                );
+                $item = VoorraadItemModel::findWithRelations($itemId);
+                $onbekend = true;
+            }
+        } else {
+            $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+
+            if ($item === null) {
+                $itemId = VoorraadItemModel::createOnbekend($barcode, $currentUser['id']);
+                $item = VoorraadItemModel::findWithRelations($itemId);
+                $onbekend = true;
+            }
         }
 
         $id = UitgifteModel::create([

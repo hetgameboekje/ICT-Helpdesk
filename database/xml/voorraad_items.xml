@@ -6,6 +6,7 @@
     <column name="device_id" type="INT" references="devices.id" on_delete="SET NULL"/>
     <column name="variant" type="VARCHAR" length="50"/>
     <column name="serienummer" type="VARCHAR" length="100" unique="true"/>
+    <column name="product_id" type="VARCHAR" length="60"/>
     <column name="barcode" type="VARCHAR" length="60" nullable="false"/>
     <column name="status" type="VARCHAR" length="20" nullable="false" default="'op_voorraad'"/>
     <column name="locatie" type="VARCHAR" length="150"/>

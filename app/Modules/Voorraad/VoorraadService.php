@@ -93,16 +93,19 @@ class VoorraadService
             }
         }
 
+        $productId = trim((string) ($input['product_id'] ?? '')) ?: null;
+
         $ids = [];
         $barcode = '';
         for ($i = 0; $i < $aantal; $i++) {
             $serienummer = $serienummers[$i] ?? null;
             $barcode = self::buildBarcode($type['code'], $variant, $serienummer);
 
-            $ids[] = VoorraadItemModel::create([
+            $ids[] = VoorraadItemModel::createUniek([
                 'type_id' => (int) $type['id'],
                 'variant' => $variant,
                 'serienummer' => $serienummer,
+                'product_id' => $aantal === 1 ? $productId : null,
                 'barcode' => $barcode,
                 'locatie' => $locatie,
                 'opmerking' => $opmerking,
@@ -126,6 +129,7 @@ class VoorraadService
 
         $variant = trim((string) ($input['variant'] ?? '')) ?: null;
         $serienummer = trim((string) ($input['serienummer'] ?? '')) ?: null;
+        $productId = trim((string) ($input['product_id'] ?? '')) ?: null;
         $locatie = trim((string) ($input['locatie'] ?? '')) ?: null;
         $opmerking = trim((string) ($input['opmerking'] ?? '')) ?: null;
 
@@ -137,6 +141,7 @@ class VoorraadService
             'type_id' => (int) $type['id'],
             'variant' => $variant,
             'serienummer' => $serienummer,
+            'product_id' => $productId,
             'barcode' => self::buildBarcode($type['code'], $variant, $serienummer),
             'locatie' => $locatie,
             'opmerking' => $opmerking,

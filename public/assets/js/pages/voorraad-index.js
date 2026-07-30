@@ -222,6 +222,7 @@ function renderDetail(item, uitgiften) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;border-top:0.5px solid var(--color-border-tertiary);margin-top:12px;padding-top:12px">
             <div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Locatie</div><div>${esc(item.locatie || '—')}</div></div>
             <div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Serienummer</div><div class="mono">${esc(item.serienummer || '—')}</div></div>
+            <div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Product-ID</div><div class="mono">${esc(item.product_id || '—')}</div></div>
             <div style="grid-column:span 2"><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-tertiary)">Opmerking</div><div>${esc(item.opmerking || '—')}</div></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
