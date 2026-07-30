@@ -8,6 +8,7 @@ use App\Core\TableQuery;
 use App\Modules\Uitgifte\Models\UitgifteModel;
 use App\Modules\Voorraad\Models\VoorraadItemModel;
 use App\Shared\AssetScan\BarcodeScanParser;
+use App\Shared\AssetScan\BarcodeTemplateMatcher;
 
 /**
  * Service/Business-laag voor uitgiften: elke uitgifte is een dunne, transactionele koppeling naar
@@ -108,10 +109,40 @@ class UitgifteService
                 $onbekend = true;
             }
         } else {
-            $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+            // Kale token zonder komma: kan onze eigen barcode zijn (bestaand gedrag), maar ook een
+            // eerder al via een barcode-sjabloon geregistreerd fabrikant-serienummer (bv. een
+            // toetsenbord/monitor) — dat item staat dan onder zijn éígen "TYPECODE-serienummer"-
+            // barcode, dus zoek ook op serienummer, anders zou een herscan hem niet vinden en per
+            // ongeluk een tweede registratie proberen aan te maken voor hetzelfde fysieke apparaat.
+            $item = VoorraadItemModel::findAvailableByBarcode($barcode)
+                ?? VoorraadItemModel::findBySerienummer($barcode);
+
+            if ($item !== null && $item['status'] === 'uitgegeven') {
+                throw new ValidationException(['barcode' => [
+                    "Dit item ({$barcode}) staat al als uitgegeven geregistreerd. Neem eerst retour via de bestaande uitgifte.",
+                ]]);
+            }
 
             if ($item === null) {
-                $itemId = VoorraadItemModel::createOnbekend($barcode, $currentUser['id']);
+                // Onbekende kale token: eerst tegen de beheerbare barcode-sjablonen leggen
+                // (BarcodeTemplateMatcher) vóór de generieke 'Overig'-vangnet — zo krijgt een
+                // herkend fabrikant-serienummer (keyboard/monitor) meteen het juiste type i.p.v.
+                // in de ongetypeerde 'Overig'-bak te belanden.
+                $template = BarcodeTemplateMatcher::match($barcode);
+
+                if ($template !== null) {
+                    $bevestigdAssetType = trim((string) ($input['bevestigd_asset_type'] ?? '')) ?: ($template['voorraad_type_naam'] ?? 'Overig');
+                    $itemId = VoorraadItemModel::createVoorApparaatKandidaat(
+                        $barcode,
+                        null,
+                        $template['omschrijving'] ?: $template['naam'],
+                        $bevestigdAssetType,
+                        $currentUser['id']
+                    );
+                } else {
+                    $itemId = VoorraadItemModel::createOnbekend($barcode, $currentUser['id']);
+                }
+
                 $item = VoorraadItemModel::findWithRelations($itemId);
                 $onbekend = true;
             }

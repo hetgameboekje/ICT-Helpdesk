@@ -113,10 +113,13 @@
 
 <script>
 /**
- * Herkenning van fabrieks-apparaatscans (serienummer,product-ID[,omschrijving], zie
- * App\Shared\AssetScan\BarcodeScanParser) in het losse scanveld boven dit formulier. Bij herkenning
- * wordt POST /api/v1/asset-scan aangeroepen (csrf.js voegt de CSRF-header automatisch toe, zie
- * app/Views/layouts/app.php) voor een suggestieblok: is het serienummer al bekend in de
+ * Herkenning van apparaatscans in het losse scanveld boven dit formulier: zowel het fabrieks-
+ * scanformaat (serienummer,product-ID[,omschrijving[,MAC-adres]], zie
+ * App\Shared\AssetScan\BarcodeScanParser) als een kale token zonder komma die overeenkomt met een
+ * beheerbaar barcode-sjabloon (bv. een toetsenbordserienummer of EAN-monitorbarcode, zie
+ * App\Shared\AssetScan\BarcodeTemplateMatcher / /voorraad/barcode-templates). Elke niet-triviale
+ * invoer wordt tegen POST /api/v1/asset-scan gelegd (csrf.js voegt de CSRF-header automatisch toe,
+ * zie app/Views/layouts/app.php) voor een suggestieblok: is het serienummer al bekend in de
  * voorraadcatalogus, dan wordt doorverwezen naar het bestaande item (update-flow) i.p.v. de velden
  * te vullen — anders worden serienummer/product-ID/type/variant voorgesteld, altijd aanpasbaar
  * vóór het indienen (nooit blind overgenomen).
@@ -133,11 +136,6 @@
         var div = document.createElement('div');
         div.textContent = value == null ? '' : value;
         return div.innerHTML;
-    }
-
-    function lijktOpApparaatScan(raw) {
-        var delen = raw.split(',').map(function (d) { return d.trim(); });
-        return delen.length >= 2 && delen[0].length >= 4 && delen[1].length >= 4;
     }
 
     function hideSuggestie() {
@@ -165,8 +163,16 @@
         var stijl = 'border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:10px 12px;background:var(--color-background-secondary)';
         var delen = [];
 
-        delen.push('<div style="font-size:12.5px;font-weight:600"><i class="bi bi-cpu"></i> Waarschijnlijk laptop of werkstation gedetecteerd</div>');
-        delen.push('<div style="font-size:11.5px;color:var(--color-text-secondary);margin-top:2px">Serienummer en product-ID gevonden vanuit barcode: <span class="mono">' + esc(s.serial_number) + '</span> / <span class="mono">' + esc(s.product_id) + '</span>' + (s.description ? ' &mdash; ' + esc(s.description) : '') + '</div>');
+        if (s.product_id) {
+            delen.push('<div style="font-size:12.5px;font-weight:600"><i class="bi bi-cpu"></i> Waarschijnlijk laptop of werkstation gedetecteerd</div>');
+            delen.push('<div style="font-size:11.5px;color:var(--color-text-secondary);margin-top:2px">Serienummer en product-ID gevonden vanuit barcode: <span class="mono">' + esc(s.serial_number) + '</span> / <span class="mono">' + esc(s.product_id) + '</span>' + (s.description ? ' &mdash; ' + esc(s.description) : '') + '</div>');
+        } else {
+            delen.push('<div style="font-size:12.5px;font-weight:600"><i class="bi bi-upc-scan"></i> Apparaat herkend via barcode-sjabloon</div>');
+            delen.push('<div style="font-size:11.5px;color:var(--color-text-secondary);margin-top:2px">Serienummer: <span class="mono">' + esc(s.serial_number) + '</span>' + (s.description ? ' &mdash; ' + esc(s.description) : '') + '</div>');
+        }
+        if (s.mac_address) {
+            delen.push('<div style="font-size:11.5px;color:var(--color-text-secondary)">MAC-adres: <span class="mono">' + esc(s.mac_address) + '</span></div>');
+        }
 
         if (s.match && s.match.voorraad_item_id) {
             delen.push('<div style="margin-top:8px;font-size:12px;border-top:0.5px solid var(--color-border-tertiary);padding-top:8px">' +
@@ -205,7 +211,7 @@
         clearTimeout(timer);
         var raw = scanInput.value.trim();
 
-        if (raw.length < 2 || !lijktOpApparaatScan(raw)) {
+        if (raw.length < 4) {
             hideSuggestie();
             return;
         }
@@ -221,7 +227,7 @@
             })
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
-                    if (res.status === 'success') {
+                    if (res.status === 'success' && res.data.device_candidate) {
                         renderSuggestie(res.data);
                     } else {
                         hideSuggestie();

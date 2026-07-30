@@ -8,6 +8,7 @@ use App\Modules\Medewerker\Models\MedewerkerModel;
 use App\Modules\Uitgifte\Models\UitgifteModel;
 use App\Modules\Voorraad\Models\VoorraadItemModel;
 use App\Shared\AssetScan\BarcodeScanParser;
+use App\Shared\AssetScan\BarcodeTemplateMatcher;
 
 class UitgifteController extends CrudController
 {
@@ -82,12 +83,36 @@ class UitgifteController extends CrudController
                     $onbekend = true;
                 }
             } else {
-                $item = VoorraadItemModel::findAvailableByBarcode($barcode);
+                // Kale token: kan onze eigen barcode zijn, maar ook een eerder al via een
+                // barcode-sjabloon geregistreerd fabrikant-serienummer — zoek daarom ook op
+                // serienummer (zelfde reden als UitgifteService::create()).
+                $item = VoorraadItemModel::findAvailableByBarcode($barcode)
+                    ?? VoorraadItemModel::findBySerienummer($barcode);
+
+                if ($item !== null && $item['status'] === 'uitgegeven') {
+                    throw new ValidationException(['barcode' => [
+                        "Dit item ({$barcode}) staat al als uitgegeven geregistreerd. Neem eerst retour via de bestaande uitgifte.",
+                    ]]);
+                }
 
                 if ($item === null) {
-                    // Geen bestaand voorraaditem met deze barcode/naam: automatisch als voorraad aanmaken
-                    // onder het vaste type 'Overig' i.p.v. de uitgifte te weigeren.
-                    $itemId = VoorraadItemModel::createOnbekend($barcode, $this->currentUserId());
+                    $template = BarcodeTemplateMatcher::match($barcode);
+
+                    if ($template !== null) {
+                        $bevestigdAssetType = trim($_POST['bevestigd_asset_type'] ?? '') ?: ($template['voorraad_type_naam'] ?? 'Overig');
+                        $itemId = VoorraadItemModel::createVoorApparaatKandidaat(
+                            $barcode,
+                            null,
+                            $template['omschrijving'] ?: $template['naam'],
+                            $bevestigdAssetType,
+                            $this->currentUserId()
+                        );
+                    } else {
+                        // Geen bestaand voorraaditem en geen bekend barcode-sjabloon: automatisch als
+                        // voorraad aanmaken onder het vaste type 'Overig' i.p.v. de uitgifte te weigeren.
+                        $itemId = VoorraadItemModel::createOnbekend($barcode, $this->currentUserId());
+                    }
+
                     $item = VoorraadItemModel::findWithRelations($itemId);
                     $onbekend = true;
                 }

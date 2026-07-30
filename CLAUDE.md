@@ -653,6 +653,105 @@ bewust genegeerd (één product-ID hoort bij één fysiek item); geen visuele br
 de suggestie-UI zelf (geen headed browser beschikbaar in deze omgeving) — wel bevestigd dat de
 juiste DOM-elementen renderen en de API-aanroepen de juiste data teruggeven.
 
+## Entra ID -> NinjaOne-conversietool (Tools, 2026-07-30)
+
+Nieuwe Tools-pagina `/tools/entra-ninjaone`: upload een Entra ID-gebruikersexport (CSV) en zet die
+om naar TAB-delimited tekst in NinjaOne's vaste kolomvolgorde voor "Import technicians / end users"
+(First name, Last name, Email, Phone) — als copy/paste-textarea én als `.tsv`-download. Stateless,
+zelfde overweging als Schijfgebruik's CSV-import: het resultaat wordt kort in `$_SESSION` bewaard
+tussen de upload-POST en de eropvolgende preview-/download-GET's, geen DB-tabel (geen
+geschiedenis/hergebruik-vereiste).
+
+**Code**: `App\Modules\Tools\EntraNinjaOne\{EntraCsvParser,NinjaOneUserMapper,
+EntraToNinjaOneConverter,NinjaOneExporter}` (elk puur functioneel, geen HTTP/DB) +
+`Exceptions\SkippedRowException` (reden voor het overslaan van een rij) +
+`App\Modules\Tools\EntraNinjaOneController` (`extends Controller`, niet `CrudController` — zelfde
+patroon als de andere Tools-controllers, one-off tool i.p.v. CRUD-resource) + thin view
+`Views/EntraNinjaOneView/index.php` (upload-formulier, resultaten-samenvatting, preview-tabel
+gelimiteerd tot 50 rijen, TAB-delimited textarea met kopieerknop, foutentabel voor overgeslagen
+rijen). Tab toegevoegd aan `app/Views/partials/tools-tabs.php` + kaart in `Views/ToolsView/index.php`.
+
+**Business rules**: alleen rijen met een geldig e-mailadres (`filter_var(...,
+FILTER_VALIDATE_EMAIL)`) in `userPrincipalName` en (standaard) `userType = Member` worden
+meegenomen — een checkbox "Ook guests meenemen" zet dat laatste per upload uit.
+`normalizeDisplayName()` strip een voorloop van niet-letter/cijfer-tekens (bv. het "#" uit het
+voorbeeld in de aanvraag) zonder accenten/diakrieten te beschadigen; `splitName()` accepteert een
+optionele `callable $customSplitter` als uitbreidingspunt voor eigen split-logica (bv. een
+"Achternaam, Voornaam"-notatie), zonder de kernklasse te hoeven wijzigen.
+
+**Geen testrunner in dit project** (zie boven aan dit bestand) — in plaats van PHPUnit is er een
+standalone voorbeeld-/testscript, `scripts/tests/entra_naar_ninjaone_voorbeeld.php` (zelfde stijl als
+`database/parse.php`: `php scripts/tests/entra_naar_ninjaone_voorbeeld.php`), met 23
+PASS/FAIL-assertions over alle vier servicemethoden, incl. het exacte voorbeeld uit de aanvraag
+en de custom-splitter-haak. Non-zero exitcode bij een gefaalde assertie.
+
+Lokaal end-to-end geverifieerd tegen een echte lokale database (XAMPP): alle 23 tests in het
+voorbeeldscript slagen; volledige HTTP-rondgang (inloggen, CSV uploaden via een echte
+multipart-POST, preview-pagina tonen, `.tsv` downloaden) bevestigt de exacte verwachte output uit de
+aanvraag (`Projectenbureau\t\tprojectenbureau@vhe.nl\t`), en dat een guest-rij met reden wordt
+overgeslagen en getoond in de foutentabel.
+
+## Correcties op eerdere sessie (2026-07-30, zelfde dag)
+
+**Entra ID -> NinjaOne: "Last name" is verplicht, gedeelde mailboxen eruit.** Business-regelcorrectie
+t.o.v. de eerdere implementatie hierboven: die liet een rij zonder achternaam (bv. het eigen
+voorbeeld "Projectenbureau"/projectenbureau@vhe.nl) nog gewoon door met een lege `lastName`. Nu
+verplicht: `NinjaOneUserMapper::mapToNinjaOneUser()` sluit een rij uit zodra geen betrouwbare
+achternaam is af te leiden (`resolveName()`), i.p.v. hem met een leeg veld mee te nemen — dit
+raakt precies gedeelde/functionele mailboxen als `inkoop@vhe.nl`/`projectenbureau@vhe.nl`. Naam-
+resolutie kijkt eerst naar de displayName (bruikbaar zodra die 2+ woorden oplevert — behoudt
+tussenvoegsels als "de Vries"), en valt pas terug op het `voornaam.achternaam@bedrijf.nl`-patroon in
+het e-mailadres (`deriveNameFromEmailLocalPart()`, ondersteunt ook een tussenvoegsel als
+"jan.van.dijk" -> "Van Dijk") zodra de displayName niets bruikbaars oplevert (ontbrekend, één woord,
+of generiek). Een "afkorting"-e-mailadres zonder punt (bv. `mkee@vhe.nl`) levert nooit iets op via de
+e-mail-route — dan telt alleen de displayName nog. **Aanname (veilige default, prioriteit
+displayName > e-mail):** een goed-gevulde displayName geeft doorgaans de beter geformatteerde naam
+(correcte hoofdletters, bewaart tussenvoegsels); mocht in de praktijk blijken dat het e-mailadres
+juist altijd leidend moet zijn (ook als de displayName al 2 woorden heeft), dan is dat één regel om
+om te draaien in `resolveName()`. `scripts/tests/entra_naar_ninjaone_voorbeeld.php` is bijgewerkt
+(25 assertions, incl. de nieuwe uitsluitingsgevallen) en lokaal geverifieerd — alle tests slagen.
+
+**Voorraad/Uitgifte: barcode-sjablonen voor kale (komma-loze) scans.** De bestaande apparaatscan-
+herkenning (zie "Apparaatscan-herkenning" hierboven) herkende alleen het
+`serienummer,product-ID[,omschrijving]`-formaat. Uitgebreid met twee losse toevoegingen naar
+aanleiding van concrete scanner-voorbeelden (HP-dockingstation/-toetsenbord, iiyama-monitor):
+- **MAC-adres-extractie**: `BarcodeScanParser` licht een deel dat er als MAC-adres uitziet
+  (`5C-28-86-3A-2E-AC`) uit de overige komma-delen van een scan (bv.
+  `5CG329ZW43,N28963-002,HP USB-C G5 Essential Dock,5C-28-86-3A-2E-AC`, een HP-dockingstationlabel)
+  i.p.v. het als platte tekst in de omschrijving te laten staan — apart teruggegeven als
+  `mac_address`, ook gelogd in `device_scans`.
+- **Beheerbare barcode-sjablonen** (nieuwe tabel `barcode_templates` + `BarcodeTemplateModel` +
+  `App\Shared\AssetScan\BarcodeTemplateMatcher`, beheerd via `/voorraad/barcode-templates`,
+  `BarcodeTemplateController`): koppelt een regex-patroon aan een voorgesteld voorraadtype +
+  omschrijving, zodat een kale token zonder komma (bv. een HP-toetsenbordserienummer
+  "BCYUH0ARZCL0AX" of een EAN-monitorbarcode "1155984821038") alsnog een typesuggestie krijgt.
+  Bewust dynamisch (geen redeploy nodig voor een nieuw type barcode) i.p.v. hardcoded, zoals
+  gevraagd. `AssetEnrichmentService` raadpleegt dit pas nadat is vastgesteld dat de token nog geen
+  bekende eigen voorraadbarcode is (`VoorraadItemModel::findByBarcode()`, nieuw) — een al bekende
+  barcode heeft geen sjabloon-suggestie nodig. Bij een match wordt de token als serienummer
+  behandeld en hergebruikt `VoorraadItemModel::createVoorApparaatKandidaat()` (dezelfde
+  aanmaakroutine als bij een "echte" device-candidate-scan) zodra de gebruiker het voorgestelde type
+  bevestigt. `UitgifteService::create()`/`UitgifteController::store()` zoeken bij een kale token nu
+  ook op serienummer (niet alleen op eigen barcode) — nodig omdat een sjabloon-herkend item onder
+  zijn eigen "TYPECODE-serienummer"-barcode komt te staan, dus een hérscan van dezelfde kale token
+  zou hem anders niet vinden en per ongeluk een tweede registratie proberen aan te maken; dit
+  voorkomt tegelijk een stil dubbele-uitgifte-record (zelfde bescherming als bij de komma-scan).
+- **Gevonden en gefixt tijdens het testen:** een patroon dat cijfers toestaat (bv. `[A-Z0-9]`) matcht
+  per ongeluk óók een kale EAN-barcode (alleen cijfers) als dat sjabloon een lager volgnummer heeft
+  dan het EAN-sjabloon — de "Snel invullen: HP-toetsenbord"-knop in de admin-UI gebruikt daarom
+  `^(?=.*[A-Z])[A-Z0-9]{12,16}$` (dwingt minstens één letter af), met een toelichting hierover in de
+  UI zelf. Dit is een sjabloon-specificiteitsprobleem, geen bug in `BarcodeTemplateMatcher` zelf (die
+  correct het eerst-matchende sjabloon in volgorde teruggeeft).
+
+Lokaal end-to-end geverifieerd tegen een echte lokale database (XAMPP MySQL, verse database +
+schema + seed): alle drie de door de gebruiker gegeven voorbeelden (dockingstation-MAC, beide
+toetsenbord-serienummers, EAN-monitorbarcode) herkend met de juiste typesuggestie; een volledige
+`POST /api/v1/uitgiften`-aanroep met het toetsenbord-serienummer maakte automatisch een
+`Toetsenbord`-getypeerd voorraad-item aan; een hérscan van hetzelfde serienummer gaf de verwachte
+422-weigering i.p.v. een dubbele registratie; `device_scans` bevat `mac_address` en
+`matched_barcode_template_id` correct voor elke scan. `php -l` schoon op alle nieuwe/gewijzigde
+bestanden.
+
 ## Roadmap / openstaande verbeterpunten
 
 **Geleverd** (fases 1–4, gecontroleerd tegen de code): CRM-hiërarchie/stamboom voor medewerkers (`manager_id`/`is_keyuser`, `GET /medewerkers/hierarchie`); Urenstaat-koppeling aan keyuser/klant (`urenstaat_registraties.keyuser_id`); Agenda-teamoverzicht "in behandeling" (`GET /agenda/team-events`); Tools herstart-mail export en verzending (`RestartReminderController`, `GET/POST /tools/herstart-herinneringen*`, met `Mailer::verstuur()` cc/bcc-support).

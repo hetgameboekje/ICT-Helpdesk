@@ -84,6 +84,20 @@ class VoorraadItemModel extends Model
         return $row === false ? null : $row;
     }
 
+    /**
+     * Zelfde als findAvailableByBarcode(), maar ongeacht status — gebruikt om te bepalen of een kale
+     * gescande token al ÜBERHAUPT een bekend voorraad-item is (any status), vóórdat
+     * AssetEnrichmentService een barcode-sjabloon (BarcodeTemplateMatcher) raadpleegt. Een reeds
+     * bekende barcode heeft nooit een sjabloon-suggestie nodig, ook niet als hij bv. 'uitgegeven' is.
+     */
+    public static function findByBarcode(string $barcode): ?array
+    {
+        $stmt = Database::pdo()->prepare(self::SELECT . ' AND vi.barcode = ? ORDER BY vi.id ASC LIMIT 1');
+        $stmt->execute([$barcode]);
+        $row = $stmt->fetch();
+        return $row === false ? null : $row;
+    }
+
     public static function serienummerExists(string $serienummer, ?int $exceptId = null): bool
     {
         $sql = 'SELECT 1 FROM voorraad_items WHERE serienummer = ? AND deleted_at IS NULL';

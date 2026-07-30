@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<table name="barcode_templates" engine="InnoDB">
+  <columns>
+    <column name="id" type="INT" primary="true" auto_increment="true"/>
+    <column name="naam" type="VARCHAR" length="150" nullable="false"/>
+    <column name="patroon" type="VARCHAR" length="255" nullable="false"/>
+    <column name="voorraad_type_id" type="INT" references="voorraad_types.id" on_delete="SET NULL"/>
+    <column name="omschrijving" type="VARCHAR" length="255"/>
+    <column name="actief" type="TINYINT" length="1" nullable="false" default="1"/>
+    <column name="volgorde" type="INT" nullable="false" default="0"/>
+    <column name="created_at" type="TIMESTAMP" nullable="false" default="CURRENT_TIMESTAMP"/>
+    <column name="updated_at" type="TIMESTAMP" nullable="false" default="CURRENT_TIMESTAMP" on_update="CURRENT_TIMESTAMP"/>
+  </columns>
+</table>

@@ -63,4 +63,14 @@ require_once APP_ROOT . '/app/Views/partials/tools-tabs.php';
       <a class="btn btn-primary" href="/tools/installatie">Openen</a>
     </div>
   </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Entra ID naar NinjaOne</span></div>
+    <div style="padding:16px">
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-top:0">
+        Zet een Entra ID-gebruikersexport (CSV) om naar TAB-delimited tekst voor NinjaOne's "Import technicians / end users".
+      </p>
+      <a class="btn btn-primary" href="/tools/entra-ninjaone">Openen</a>
+    </div>
+  </div>
 </div>

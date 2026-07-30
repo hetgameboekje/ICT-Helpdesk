@@ -57,6 +57,7 @@ function renderShell() {
                 <i class="bi bi-search"></i>
                 <input type="text" id="vrZoekInput" placeholder="Zoek op barcode of naam&hellip;">
             </div>
+            <a class="btn" href="/voorraad/barcode-templates"><i class="bi bi-upc-scan"></i> Barcode-sjablonen</a>
             <a class="btn btn-accent" href="/voorraad/create"><i class="bi bi-plus-lg"></i> Nieuw artikel</a>
         </div>
         <div class="kb-split" style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start">

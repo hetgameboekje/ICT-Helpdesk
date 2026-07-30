@@ -48,6 +48,7 @@ use App\Modules\Ticket\TicketController;
 use App\Modules\Ticket\TicketEmailIntakeController;
 use App\Modules\Ticket\TicketLogController;
 use App\Modules\Ticket\TicketTijdController;
+use App\Modules\Tools\EntraNinjaOneController;
 use App\Modules\Tools\InstallatieController;
 use App\Modules\Tools\PhonebookController;
 use App\Modules\Tools\RestartReminderController;
@@ -58,6 +59,7 @@ use App\Modules\Urenstaat\UrenstaatController;
 use App\Modules\Verbeterpunt\VerbeterpuntController;
 use App\Modules\Verbeterpunt\VerbeterpuntLogController;
 use App\Modules\Verbeterpunt\VerbeterpuntTijdController;
+use App\Modules\Voorraad\BarcodeTemplateController;
 use App\Modules\Voorraad\VoorraadController;
 use App\Shared\Automation\AutomationController;
 use App\Shared\Auth\AuthController;
@@ -162,6 +164,10 @@ $router->get('/tools/installatie/opdrachten/{id}', [InstallatieController::class
 $router->get('/tools/installatie/opdrachten/{id}/print', [InstallatieController::class, 'opdrachtPrint']);
 $router->post('/tools/installatie/opdrachten/{id}/items/{id}/toggle', [InstallatieController::class, 'opdrachtItemToggle']);
 $router->post('/tools/installatie/opdrachten/{id}/verwijderen', [InstallatieController::class, 'opdrachtDestroy']);
+
+$router->get('/tools/entra-ninjaone', [EntraNinjaOneController::class, 'index']);
+$router->post('/tools/entra-ninjaone/upload', [EntraNinjaOneController::class, 'upload']);
+$router->get('/tools/entra-ninjaone/download', [EntraNinjaOneController::class, 'download']);
 $router->get('/tickets/export', [TicketController::class, 'export']);
 $router->post('/tickets/import', [TicketController::class, 'import']);
 $router->get('/tickets/categorieen', [TicketController::class, 'categorieen']);
@@ -274,6 +280,12 @@ $router->post('/apparaten/software-import', [DeviceController::class, 'softwareI
 $router->post('/apparaten/software/leegmaken', [DeviceController::class, 'softwareLeegmaken']);
 
 $router->get('/voorraad/{id}/barcode', [VoorraadController::class, 'barcode']);
+
+$router->get('/voorraad/barcode-templates', [BarcodeTemplateController::class, 'index']);
+$router->post('/voorraad/barcode-templates', [BarcodeTemplateController::class, 'store']);
+$router->get('/voorraad/barcode-templates/{id}/edit', [BarcodeTemplateController::class, 'edit']);
+$router->post('/voorraad/barcode-templates/{id}', [BarcodeTemplateController::class, 'update']);
+$router->post('/voorraad/barcode-templates/{id}/verwijderen', [BarcodeTemplateController::class, 'destroy']);
 
 $router->post('/urenstaat/starten', [UrenstaatController::class, 'starten']);
 $router->post('/urenstaat/stoppen', [UrenstaatController::class, 'stoppen']);

@@ -6,6 +6,7 @@
     <column name="serienummer" type="VARCHAR" length="100"/>
     <column name="product_id" type="VARCHAR" length="100"/>
     <column name="beschrijving" type="VARCHAR" length="255"/>
+    <column name="mac_address" type="VARCHAR" length="20"/>
     <column name="extra_parts_json" type="TEXT"/>
     <column name="device_candidate" type="TINYINT" length="1" nullable="false" default="0"/>
     <column name="suggested_asset_type" type="VARCHAR" length="50"/>
@@ -13,6 +14,7 @@
     <column name="match_confidence" type="VARCHAR" length="20"/>
     <column name="matched_voorraad_item_id" type="INT" references="voorraad_items.id" on_delete="SET NULL"/>
     <column name="matched_schijfgebruik_device_id" type="INT" references="schijfgebruik_devices.id" on_delete="SET NULL"/>
+    <column name="matched_barcode_template_id" type="INT" references="barcode_templates.id" on_delete="SET NULL"/>
     <column name="suggested_medewerker_id" type="INT" references="medewerkers.id" on_delete="SET NULL"/>
     <column name="last_logged_on_user" type="VARCHAR" length="150"/>
     <column name="context" type="VARCHAR" length="20"/>
