@@ -802,12 +802,25 @@ op basis van gebruikersfeedback na de Lovable-rollout hierboven.
   weergave — een echte, werkende invulling i.p.v. de checkbox-toggle die de mockup niet toont. De
   "Alleen tickets 'in behandeling'"-checkbox verschijnt nu alleen in Team-modus (was altijd zichtbaar
   maar had buiten teamweergave om geen effect).
-  **Nog niet gedaan (buiten scope van deze bugfixronde):** een volledige pixel-voor-pixel
-  Lovable-restyle van de agenda-toolbar/kaarten is niet uitgevoerd — er was geen browsersessie
-  beschikbaar in deze omgeving om het resultaat visueel te verifiëren, en een blinde CSS-herschrijving
-  zonder verificatie past niet bij de "klik erdoorheen en verifieer"-regel die de rest van de
-  Lovable-rollout volgt. Aanbevolen vervolgstap: visuele klik-door-test in een omgeving met browser,
-  daarna gerichte CSS-fixes voor de concrete "buttons zien er raar uit"-klacht.
+  **Update (2026-07-25) — toolbar-restyle alsnog gedaan, op basis van een losse Lovable UI-proof-of-
+  concept-artifact** (agenda-toolbar/kalendervenster, geen volledige nieuwe modulebouw): de platte
+  FullCalendar-titel (`info.view.title`) is vervangen door een echte klikbare datumknop
+  (`#agenda-date-btn`/`#agenda-date-input`, zelfde patroon als de artifact: een onzichtbare
+  native `<input type="date">` erachter, `showPicker()` bij klik) met een handmatig geformatteerd
+  label — `"Week NN · d - d maand jaar"` bij weekweergave, volledige datum bij dag/team — via nieuwe
+  `isoWeekNumber()`/`formatDateLabel()`-helpers in de bestaande inline script. Nieuwe CSS-klassen
+  `.agenda-date-picker`/`.agenda-date-btn`/`.agenda-date-input-native` in `app.css`, zelfde
+  tokens/opbouw als de bestaande `.agenda-icon-btn`/`.agenda-today-btn`. De kalender kreeg ook een
+  vast 08:00-18:00-standaardvenster: `height:560` + `slotMinTime:'00:00:00'`/`slotMaxTime:'24:00:00'`
+  (volledig etmaal blijft bereikbaar) + `scrollTime:'08:00:00'` (opent altijd gescrold naar 08:00)
+  i.p.v. de vorige `height:'auto'` die de hele pagina liet meegroeien met een lange dag. Geen mockdata
+  of nagemaakte functionaliteit overgenomen uit de artifact — alleen het visuele/interactiepatroon;
+  alle bestaande endpoints (`/agenda/events`, `/agenda/team-events`, CRUD) ongewijzigd.
+  Lokaal geverifieerd: `php -l` schoon, server boot zonder fatale fout op `/agenda` (302 naar
+  `/login` zonder sessie). Geen ingelogde browser-klik-door-test (geen lokale DB/browser beschikbaar
+  in deze omgeving) — nog te doen: visueel controleren dat de datumknop-breedte niet springt bij het
+  wisselen tussen dag-/weeklabels, en dat het 08-18-scrollgedrag prettig aanvoelt in zowel licht als
+  donker thema.
 - Lokaal geverifieerd: `php -l` schoon op alle gewijzigde bestanden (DashboardController, dashboard-
   view, alle gewijzigde Model-klassen, Agenda-view); een aparte Explore-subagent bevestigde dat alle
   querystring-filters achter de nieuwe dashboard-KPI-links (`?status=`, `?prioriteit=`,

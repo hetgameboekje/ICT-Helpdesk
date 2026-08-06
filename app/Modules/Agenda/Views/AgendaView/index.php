@@ -27,7 +27,13 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
     <button class="agenda-today-btn" type="button" id="agenda-today">Vandaag</button>
     <button class="agenda-icon-btn" type="button" id="agenda-next"><i class="bi bi-chevron-right"></i></button>
   </div>
-  <div class="agenda-toolbar-title" id="agenda-title"></div>
+  <div class="agenda-date-picker">
+    <button type="button" class="agenda-date-btn" id="agenda-date-btn">
+      <i class="bi bi-calendar3"></i>
+      <span id="agenda-date-label"></span>
+    </button>
+    <input type="date" id="agenda-date-input" class="agenda-date-input-native" aria-label="Datum kiezen">
+  </div>
   <div class="agenda-view-switch" id="agenda-view-switch">
     <button type="button" data-view="timeGridDay">Dag</button>
     <button type="button" data-view="timeGridWeek" class="active">Week</button>
@@ -47,7 +53,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 </div>
 
 <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start">
-  <div class="card" style="padding:0;overflow:hidden">
+  <div class="card agenda-calendar-fixed" style="padding:0;overflow:hidden">
     <div id="agenda-calendar"></div>
   </div>
 
@@ -108,7 +114,9 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
         </div>
         <div class="form-group" id="agenda-gekoppeld-wrap" style="display:none">
           <label class="form-label" id="agenda-gekoppeld-label">Koppelen aan</label>
-          <select id="agenda-gekoppeld-id"></select>
+          <input type="text" id="agenda-gekoppeld-search" list="agenda-gekoppeld-options" autocomplete="off" placeholder="Typ om te zoeken&hellip;">
+          <datalist id="agenda-gekoppeld-options"></datalist>
+          <input type="hidden" id="agenda-gekoppeld-id" value="">
         </div>
         <div class="form-group">
           <label class="form-label">Persoon</label>
@@ -155,6 +163,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var huidigeGebruikerId = <?= (int) $huidigeGebruikerId ?>;
 
     var calendarEl = document.getElementById('agenda-calendar');
+    var dateBtn = document.getElementById('agenda-date-btn');
+    var dateLabel = document.getElementById('agenda-date-label');
+    var dateInput = document.getElementById('agenda-date-input');
     var personSelect = document.getElementById('agenda-persoon');
     var alleenInBehandelingCheckbox = document.getElementById('agenda-alleen-in-behandeling');
     var alleenInBehandelingWrap = document.getElementById('agenda-alleen-in-behandeling-wrap');
@@ -172,30 +183,55 @@ document.addEventListener('DOMContentLoaded', function () {
         alleenInBehandelingWrap.style.display = actief ? 'flex' : 'none';
     }
 
+    // Gekoppeld ticket/verbeterpunt kiezen via een zoekbare combobox (input + <datalist>, zelfde
+    // patroon als de barcode/naam-autocomplete in uitgiften-index.js) i.p.v. een lange <select> —
+    // bij veel tickets moest daar anders doorheen gescrold worden. Geen echte multi-select: elke
+    // afspraak koppelt aan precies één ticket/verbeterpunt (agenda_items.gekoppeld_id is een losse
+    // kolom, geen koppeltabel), dus dat zou een schemawijziging vereisen.
+    var gekoppeldeLabelById = {};
+
+    function gekoppeldLabel(item) {
+        return '#' + item.id + ' — ' + item.titel;
+    }
+
     function gekoppeldeOpties() {
         var type = document.getElementById('agenda-type').value;
         var wrap = document.getElementById('agenda-gekoppeld-wrap');
-        var select = document.getElementById('agenda-gekoppeld-id');
+        var datalist = document.getElementById('agenda-gekoppeld-options');
+        var searchInput = document.getElementById('agenda-gekoppeld-search');
+        var hiddenInput = document.getElementById('agenda-gekoppeld-id');
         var label = document.getElementById('agenda-gekoppeld-label');
-        select.innerHTML = '<option value="">— Geen —</option>';
 
-        if (type === 'ticket') {
+        datalist.innerHTML = '';
+        searchInput.value = '';
+        hiddenInput.value = '';
+        gekoppeldeLabelById = {};
+
+        var items = type === 'ticket' ? tickets : (type === 'verbeterpunt' ? verbeterpunten : []);
+        if (items.length) {
             wrap.style.display = '';
-            label.textContent = 'Ticket';
-            tickets.forEach(function (t) {
-                select.innerHTML += '<option value="' + t.id + '">' + t.titel.replace(/</g, '&lt;') + '</option>';
-            });
-        } else if (type === 'verbeterpunt') {
-            wrap.style.display = '';
-            label.textContent = 'Verbeterpunt';
-            verbeterpunten.forEach(function (v) {
-                select.innerHTML += '<option value="' + v.id + '">' + v.titel.replace(/</g, '&lt;') + '</option>';
+            label.textContent = type === 'ticket' ? 'Ticket' : 'Verbeterpunt';
+            items.forEach(function (item) {
+                var optLabel = gekoppeldLabel(item);
+                gekoppeldeLabelById[item.id] = optLabel;
+                datalist.innerHTML += '<option value="' + optLabel.replace(/</g, '&lt;').replace(/"/g, '&quot;') + '">';
             });
         } else {
             wrap.style.display = 'none';
         }
     }
     document.getElementById('agenda-type').addEventListener('change', gekoppeldeOpties);
+
+    // Bij elke wijziging in het zoekveld: alleen een exacte match met een optie uit de datalist
+    // (dus daadwerkelijk gekozen, niet zomaar getypt) zet het gekoppelde id.
+    document.getElementById('agenda-gekoppeld-search').addEventListener('input', function () {
+        var typed = this.value;
+        var hiddenInput = document.getElementById('agenda-gekoppeld-id');
+        var matchId = Object.keys(gekoppeldeLabelById).find(function (id) {
+            return gekoppeldeLabelById[id] === typed;
+        });
+        hiddenInput.value = matchId || '';
+    });
 
     function toDatetimeLocal(iso) {
         return iso.slice(0, 16);
@@ -231,14 +267,49 @@ document.addEventListener('DOMContentLoaded', function () {
         gekoppeldeOpties();
         if (props.gekoppeld_id) {
             document.getElementById('agenda-gekoppeld-id').value = props.gekoppeld_id;
+            // gekoppeldeLabelById kent alleen nog-open tickets/lopende verbeterpunten (zelfde bron
+            // als voorheen de <select>-opties) — als het gekoppelde item er niet meer in zit
+            // (bv. inmiddels afgehandeld) valt de zoekbalk terug op "#id" i.p.v. leeg.
+            document.getElementById('agenda-gekoppeld-search').value = gekoppeldeLabelById[props.gekoppeld_id] || ('#' + props.gekoppeld_id);
         }
         modal.show();
+    }
+
+    // Datum-knop-label: bij dag-/teamweergave de volledige datum, bij weekweergave
+    // "Week NN · d - d maand jaar" (zelfde formattering als de Lovable-mockup).
+    var MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    function isoWeekNumber(date) {
+        var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        var dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+    function formatDateLabel(view) {
+        var start = view.currentStart;
+        if (view.type === 'timeGridWeek') {
+            var end = new Date(view.currentEnd);
+            end.setDate(end.getDate() - 1);
+            var week = isoWeekNumber(start);
+            var sameMonth = start.getMonth() === end.getMonth();
+            var range = sameMonth
+                ? start.getDate() + ' - ' + end.getDate() + ' ' + MAANDEN[end.getMonth()] + ' ' + end.getFullYear()
+                : start.getDate() + ' ' + MAANDEN[start.getMonth()] + ' - ' + end.getDate() + ' ' + MAANDEN[end.getMonth()] + ' ' + end.getFullYear();
+            return 'Week ' + week + ' · ' + range;
+        }
+        return start.getDate() + ' ' + MAANDEN[start.getMonth()] + ' ' + start.getFullYear();
+    }
+    function toIsoDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
     var calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'nl',
         firstDay: 1,
-        height: 'auto',
+        height: 560,
+        slotMinTime: '00:00:00',
+        slotMaxTime: '24:00:00',
+        scrollTime: '08:00:00',
         initialView: 'timeGridWeek',
         headerToolbar: false,
         editable: true,
@@ -268,7 +339,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         },
         datesSet: function (info) {
-            document.getElementById('agenda-title').textContent = info.view.title;
+            dateLabel.textContent = formatDateLabel(info.view);
+            dateInput.value = toIsoDate(info.view.currentStart);
             if (!teamMode) {
                 document.querySelectorAll('#agenda-view-switch button').forEach(function (btn) {
                     btn.classList.toggle('active', btn.dataset.view === info.view.type);
@@ -293,6 +365,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('agenda-prev').addEventListener('click', function () { calendar.prev(); });
     document.getElementById('agenda-next').addEventListener('click', function () { calendar.next(); });
     document.getElementById('agenda-today').addEventListener('click', function () { calendar.today(); });
+    dateBtn.addEventListener('click', function () {
+        if (dateInput.showPicker) { dateInput.showPicker(); } else { dateInput.focus(); }
+    });
+    dateInput.addEventListener('change', function () {
+        if (!dateInput.value) return;
+        calendar.gotoDate(dateInput.value);
+    });
     document.querySelectorAll('#agenda-view-switch button').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.querySelectorAll('#agenda-view-switch button').forEach(function (b) { b.classList.remove('active'); });

@@ -523,11 +523,22 @@ a.kpi-card{cursor:pointer}
 .agenda-today-btn{height:30px;padding:0 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);font-size:12px;font-weight:500}
 .agenda-today-btn:hover{background:var(--color-background-secondary)}
 .agenda-toolbar-title{font-size:13px;font-weight:600}
+.agenda-date-picker{position:relative;flex-shrink:0}
+.agenda-date-btn{display:flex;align-items:center;gap:6px;min-width:220px;height:30px;padding:0 8px;border-radius:var(--border-radius-md);border:0.5px solid transparent;background:transparent;color:var(--color-text-primary);font-size:13.5px;font-weight:600;font-family:inherit}
+.agenda-date-btn:hover{background:var(--color-background-secondary);border-color:var(--color-border-tertiary)}
+.agenda-date-btn i{color:var(--color-text-tertiary)}
+.agenda-date-btn span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agenda-date-input-native{position:absolute;inset:0;width:220px;height:30px;opacity:0;pointer-events:none;border:none}
 .agenda-view-switch{display:flex;align-items:center;gap:2px;background:var(--color-background-secondary);padding:2px;border-radius:var(--border-radius-md)}
 .agenda-view-switch button{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:var(--color-text-secondary);background:transparent;border:0}
 .agenda-view-switch button.active{background:var(--color-text-primary);color:var(--color-background-primary)}
 .agenda-toolbar-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
 .agenda-toolbar-check{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:400;color:var(--color-text-secondary);white-space:nowrap}
+
+/* Standaard 08:00-18:00-kijkvenster: de kalender toont het volledige etmaal maar scrolt
+   automatisch naar 08:00 (zie scrollTime in de FullCalendar-config); de vaste hoogte hier
+   zorgt dat afspraken buiten dat venster de kaart niet uitrekken maar scrollbaar blijven. */
+.agenda-calendar-fixed .fc-scroller{max-height:560px}
 
 .fc .fc-col-header-cell{background:var(--color-background-secondary)}
 .fc .fc-col-header-cell-cushion{padding:8px 6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);text-decoration:none}
