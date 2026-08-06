@@ -25,10 +25,46 @@ php database/rename_database.php <nieuwe_naam> [--drop-old]   # rename the live 
 For Hostnet (no php-cli access), `database/rename_database_hostnet.sql` does the same rename via plain `RENAME TABLE` statements, runnable from phpMyAdmin's SQL tab — see the comment header in that file for the required steps (new database must be created via Hostnet's control panel first).
 Table definitions live as XML in `database/xml/*.xml`; edit those, not `database/schema.sql` directly, then run `php database/parse.php`. The Beheer UI ("Database toepassen") can also add missing tables/columns automatically but never alters an existing column type.
 
+**Automatic schema sync on every deploy (`App\Core\DevSync`, 2026-08-06):** `/login` always runs
+`SchemaParser::applyToDatabase()` on page load now, in every environment including Hostnet — not
+just in `dev` mode as before. This closes exactly the gap found in the live-DB drift check above
+(shipped code referencing tables/columns that were never applied live): after an SFTP deploy, the
+next `/login` hit brings the live schema up to date with `database/xml/*.xml` automatically, no
+manual "Database toepassen" click or phpMyAdmin step needed. Safe to run unattended because it's
+strictly additive (`CREATE TABLE IF NOT EXISTS` + `ADD COLUMN` for columns missing on an existing
+table, same as the Beheer button) — never alters an existing column's type, so it can't cause data
+loss. Output goes only to `error_log`, never to the response. `git pull` stays gated behind
+`gitPullEnabled` (dev-only, needs shell access Hostnet doesn't have).
+
 Windows dev helper (interactive menu for the above plus git pull, `.env` rebuild, pulling a live DB dump):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\dev-tools\dev-tools.ps1
 ```
+
+**Live DB drift check (2026-08-06):** a full dump of the live Hostnet database
+(`mysql_c9lkxmp0f_service_one.sql`, gitignored, kept locally for reference only — not the source of
+truth, `database/xml/*.xml` is) was compared against a freshly regenerated
+`database/.parsed/schema.sql`. Found out of sync — a suggestion script, `database/live_sync_2026-08-06.sql`,
+has the exact `CREATE TABLE`/`ALTER TABLE` statements (not auto-applied, run manually e.g. via
+phpMyAdmin's SQL tab):
+- **7 tables defined in XML but missing live**: `barcode_templates`, `device_scans`,
+  `hardware_uitgave_logs`, `installatie_opdrachten`, `installatie_opdracht_items`,
+  `installatie_opdracht_profielen`, `personal_access_tokens`. These back already-shipped features
+  (apparaatscan-herkenning, HardwareUitgave-statushistorie, Tools' Installatie-opdrachten, bearer-token
+  auth) — without them those flows fail live.
+- **`cyberrisicos` missing `kans`/`impact` columns**: still read/written by
+  `CyberRisicoController`/`CyberRisicoService::prioriteitVanMatrix()` and in
+  `CyberRisicoModel::$fillable` (the "Lovable-conversie" notes elsewhere in this file only mean the
+  *mockup UI* has no risk-matrix widget — the underlying kans×impact data model is still very much
+  live code, this was a stale/incomplete prior migration, not an intentional removal).
+- **`voorraad_items` missing `product_id`**: added for the apparaatscan-herkenning feature (see
+  "Apparaatscan-herkenning" below), never applied live.
+- **`tickets.opdrachtgever_naam` is `VARCHAR(150)` live, XML says `TEXT`**: this field is encrypted
+  (`FieldEncryptor`, AES-256-GCM, stored as base64(iv+tag+ciphertext)) — the stored value is always
+  longer than the plaintext name, so any name over roughly 80 characters risks silent truncation of
+  the ciphertext on the live `VARCHAR(150)`. Needs a `MODIFY COLUMN ... TEXT`.
+- Everything else that differed (`INT` vs `INT(11)`, `BIGINT UNSIGNED` vs `BIGINT(20) UNSIGNED`,
+  column-name casing like `STATUS`/`status`) is cosmetic/pre-existing and not worth changing.
 
 No build step, linter, or test runner is configured — there's nothing to run beyond starting the PHP server and using the app/browser to verify changes.
 

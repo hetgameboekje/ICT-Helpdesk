@@ -3,11 +3,13 @@
 namespace App\Core;
 
 /**
- * In dev-modus (config 'dev' => true) wordt bij het laden van /login automatisch
- * "git pull" gedaan en het databaseschema geparsed + toegepast, zodat een lokale
- * dev-omgeving nooit handmatig gesynchroniseerd hoeft te worden. In productie
- * (dev => false, bv. Hostnet) gebeurt dit bewust niet — daar kan het alleen nog
- * handmatig via de knoppen op de Beheer-pagina.
+ * Bij het laden van /login wordt het databaseschema altijd stilzwijgend geparsed + toegepast
+ * (additive-only: CREATE TABLE IF NOT EXISTS + ontbrekende kolommen toevoegen, nooit een bestaand
+ * kolomtype wijzigen — zie SchemaParser::applyToDatabase) zodat een deploy (ook op Hostnet, zonder
+ * shell-toegang) na de eerstvolgende login automatisch de live database bijwerkt naar de XML-stand
+ * in de gedeployde code, zonder handmatige stap via de Beheer-pagina. In dev-modus (config
+ * 'dev' => true) wordt daarnaast ook "git pull" gedaan. Alles wordt alleen naar error_log
+ * geschreven, nooit naar de response — een mislukte sync mag een login nooit blokkeren.
  */
 class DevSync
 {
@@ -36,8 +38,6 @@ class DevSync
             exec('git pull 2>&1', $output, $exitCode);
             chdir($huidigeMap);
             $log[] = 'git pull (' . ($exitCode === 0 ? 'OK' : 'FOUT') . '): ' . implode(' | ', $output);
-        } else {
-            $log[] = 'git pull overgeslagen (gitPullEnabled staat uit — geen shell-toegang op deze server).';
         }
 
         try {
